@@ -80,11 +80,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "TempoKey — Analyse et organise tes bibliothèques audio" },
       { name: "description", content: "Outil professionnel pour DJs et producteurs : analysez BPM, tonalité et organisez vos bibliothèques audio." },
       { name: "theme-color", content: "#1a2540" },
-      { property: "og:title", content: "TempoKey" },
-      { property: "og:description", content: "Analyse et organise tes bibliothèques audio." },
+      { property: "og:title", content: "TempoKey — Analyse et organise tes bibliothèques audio" },
+      { property: "og:description", content: "Outil professionnel pour DJs et producteurs : analysez BPM, tonalité et organisez vos bibliothèques audio." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "TempoKey — Analyse et organise tes bibliothèques audio" },
+      { name: "twitter:description", content: "Outil professionnel pour DJs et producteurs : analysez BPM, tonalité et organisez vos bibliothèques audio." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/11ea2fe2-f750-4207-924d-713a57d9fe69" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/11ea2fe2-f750-4207-924d-713a57d9fe69" },
     ],
     links: [
       {
