@@ -273,10 +273,28 @@ export function RenamePanel() {
                 placeholder="{ORDER} - {BPM} - {KEY} - {TITLE}"
               />
               <p className="mt-2 text-xs text-muted-foreground">
-                Variables : {"{ORDER}, {BPM}, {KEY}, {CAMELOT}, {TITLE}, {DURATION}"}
+                Variables : {TEMPLATE_VARIABLES.join(", ")}
               </p>
             </Section>
           )}
+
+          <Section title="Options">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cleanPrefixes}
+                onChange={(e) => setCleanPrefixes(e.target.checked)}
+                className="mt-1 h-4 w-4 accent-[var(--primary)]"
+              />
+              <span className="text-sm">
+                <span className="font-medium text-foreground">Nettoyer les préfixes existants</span>
+                <span className="mt-0.5 block text-xs text-muted-foreground">
+                  Retire automatiquement numéros, BPM, Camelot et séparateurs avant le titre.
+                </span>
+              </span>
+            </label>
+          </Section>
+
 
           <div className="grid grid-cols-2 gap-2">
             <button
