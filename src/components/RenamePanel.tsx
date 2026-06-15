@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useLibraryStore } from "@/lib/library-store";
 import { useOrderedTracks, useOrderingStore } from "@/lib/ordering-store";
-import { buildPreview, TEMPLATES, type TemplateId, type RenamePreviewItem } from "@/lib/rename/templates";
+import { buildPreview, TEMPLATES, TEMPLATE_VARIABLES, type TemplateId, type RenamePreviewItem } from "@/lib/rename/templates";
 import {
   ensurePermission,
   isFsAccessSupported,
