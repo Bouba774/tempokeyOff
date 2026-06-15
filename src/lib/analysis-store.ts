@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { analyzeFile, formatDuration } from "./audio/analyzer";
 import { useLibraryStore } from "./library-store";
+import { invalidateHarmonicCache } from "./harmonic";
 
 const CONCURRENCY = 2;
 const MAX_LOG = 200;
@@ -120,6 +121,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
           const cur = new Set(get().currentIds);
           cur.delete(track.id);
           set({ currentIds: cur });
+          invalidateHarmonicCache();
         }
       }
     };
