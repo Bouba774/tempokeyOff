@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLibraryStore } from "@/lib/library-store";
 import { useAnalysisStore, formatETA } from "@/lib/analysis-store";
-import { Activity, Play, Square, AlertTriangle, Disc3 } from "lucide-react";
+import { Activity, Play, Square, AlertTriangle, Disc3, ListOrdered } from "lucide-react";
 import { HarmonicMixing } from "./HarmonicMixing";
+import { SetBuilder } from "./SetBuilder";
 
 export function AnalysisPanel() {
   const library = useLibraryStore((s) => s.library);
