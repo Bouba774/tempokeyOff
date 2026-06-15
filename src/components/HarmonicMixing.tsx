@@ -62,6 +62,7 @@ function Section({
   items,
   source,
   empty,
+  onApply,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -69,15 +70,26 @@ function Section({
   items: Suggestion[];
   source: Track;
   empty: string;
+  onApply?: () => void;
 }) {
   return (
     <div className="rounded-xl border border-border bg-card">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="flex items-center gap-2 min-w-0">
           <span className="text-[var(--primary-glow)]">{icon}</span>
-          <span className="text-sm font-medium">{title}</span>
+          <span className="truncate text-sm font-medium">{title}</span>
         </div>
-        {hint && <span className="text-[11px] text-muted-foreground">{hint}</span>}
+        <div className="flex shrink-0 items-center gap-2">
+          {hint && <span className="hidden sm:inline text-[11px] text-muted-foreground">{hint}</span>}
+          {onApply && items.length > 0 && (
+            <button
+              onClick={onApply}
+              className="inline-flex items-center gap-1 rounded-md border border-[var(--primary)]/40 bg-[var(--primary)]/10 px-2 py-1 text-[11px] font-semibold text-[var(--primary-glow)] hover:bg-[var(--primary)]/20"
+            >
+              <CheckCheck className="h-3 w-3" /> Appliquer
+            </button>
+          )}
+        </div>
       </div>
       {items.length === 0 ? (
         <div className="px-4 py-5 text-center text-xs text-muted-foreground">{empty}</div>
