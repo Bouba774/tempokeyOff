@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Copy, Trash2, EyeOff, ShieldCheck } from "lucide-react";
+import { Copy, Trash2, EyeOff, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { useLibraryStore, type Track } from "@/lib/library-store";
 import { findDuplicates, type DuplicateGroup } from "@/lib/duplicates";
 
@@ -44,7 +45,11 @@ export function DuplicatesPanel() {
   }
 
   async function applyAll() {
+    const removed = visible.reduce((n, g) => n + (g.tracks.length - 1), 0);
     for (const g of visible) await applyGroup(g);
+    if (removed > 0) {
+      toast.success(`${removed} doublon${removed > 1 ? "s" : ""} retiré${removed > 1 ? "s" : ""}`);
+    }
   }
 
   if (!library) return null;
@@ -77,8 +82,10 @@ export function DuplicatesPanel() {
       )}
 
       {visible.length === 0 && (
-        <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-          Aucun doublon détecté.
+        <div className="rounded-xl border border-dashed border-border bg-card/50 p-10 text-center">
+          <CheckCircle2 className="mx-auto h-8 w-8 text-[var(--primary-glow)]" />
+          <p className="mt-3 text-sm font-medium text-foreground">Bibliothèque propre</p>
+          <p className="mt-1 text-xs text-muted-foreground">Aucun doublon détecté pour le moment.</p>
         </div>
       )}
 

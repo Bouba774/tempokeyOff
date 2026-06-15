@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   useLibraryStore,
   buildLibraryFromFiles,
@@ -53,21 +54,29 @@ function Home() {
       );
       if (lib.tracks.length === 0) {
         setProgress(null);
-        alert("Aucun fichier audio compatible (mp3, wav, flac, aac) dans ce dossier.");
+        toast.error("Aucun fichier audio compatible", {
+          description: "Formats acceptés : mp3, wav, flac, aac.",
+        });
         return;
       }
       resetAnalysis();
       await setLibrary(lib);
       setFiles(fileEntries);
       setProgress({ phase: "done", scanned: lib.tracks.length, total: lib.tracks.length });
+      toast.success(`${lib.tracks.length.toLocaleString()} morceaux importés`, {
+        description: lib.name,
+      });
       setTimeout(() => {
         setProgress(null);
         navigate({ to: "/workspace" });
         void startAnalysis();
-      }, 500);
+      }, 400);
     } catch (err) {
       console.error(err);
       setProgress(null);
+      toast.error("Import impossible", {
+        description: "Vérifie que le dossier est accessible et réessaie.",
+      });
     }
   }
 
