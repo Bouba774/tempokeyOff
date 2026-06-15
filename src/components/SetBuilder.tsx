@@ -272,7 +272,7 @@ export function SetBuilder() {
           )}
 
           {setTracks.length > 0 && (
-            <div className="flex items-center justify-end gap-2 border-t border-border px-3 py-2">
+            <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-3 py-2">
               <button
                 onClick={() => {
                   setActiveType(null);
@@ -285,10 +285,16 @@ export function SetBuilder() {
               </button>
               <button
                 onClick={() => setValidated(true)}
+                className="rounded-lg border border-border bg-[var(--surface-elevated)] px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
+              >
+                Valider le set
+              </button>
+              <button
+                onClick={promoteToActive}
                 className="rounded-lg px-3 py-1.5 text-xs font-semibold text-[var(--primary-foreground)]"
                 style={{ background: "var(--gradient-primary)" }}
               >
-                Valider le set
+                Utiliser comme ordre principal
               </button>
             </div>
           )}
