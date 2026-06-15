@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useLibraryStore } from "@/lib/library-store";
+import { useAnalysisStore } from "@/lib/analysis-store";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import { TrackList } from "@/components/TrackList";
 import { AnalysisPanel } from "@/components/AnalysisPanel";
@@ -16,6 +17,8 @@ function Workspace() {
   const library = useLibraryStore((s) => s.library);
   const hydrated = useLibraryStore((s) => s.hydrated);
   const hydrate = useLibraryStore((s) => s.hydrate);
+  const startAnalysis = useAnalysisStore((s) => s.start);
+  const running = useAnalysisStore((s) => s.running);
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>("library");
 
@@ -26,6 +29,16 @@ function Workspace() {
   useEffect(() => {
     if (hydrated && !library) navigate({ to: "/" });
   }, [hydrated, library, navigate]);
+
+  // Auto-start analysis whenever pending tracks with in-memory file handles exist.
+  useEffect(() => {
+    if (!library || running) return;
+    const getFile = useLibraryStore.getState().getFile;
+    const hasWork = library.tracks.some(
+      (t) => t.status === "pending" && !!getFile(t.id),
+    );
+    if (hasWork) void startAnalysis();
+  }, [library, running, startAnalysis]);
 
   if (!library) return null;
 

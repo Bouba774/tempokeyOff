@@ -5,6 +5,7 @@ import {
   buildLibraryFromFiles,
   type ImportProgress,
 } from "@/lib/library-store";
+import { useAnalysisStore } from "@/lib/analysis-store";
 import { ImportProgressModal } from "@/components/ImportProgressModal";
 import { FolderPlus, Clock } from "lucide-react";
 import logoAsset from "@/assets/tempokey-logo.png.asset.json";
@@ -22,10 +23,13 @@ export const Route = createFileRoute("/")({
 function Home() {
   const navigate = useNavigate();
   const setLibrary = useLibraryStore((s) => s.setLibrary);
+  const setFiles = useLibraryStore((s) => s.setFiles);
   const lastMeta = useLibraryStore((s) => s.lastLibraryMeta);
   const hydrated = useLibraryStore((s) => s.hydrated);
   const hydrate = useLibraryStore((s) => s.hydrate);
   const restoreLast = useLibraryStore((s) => s.restoreLast);
+  const resetAnalysis = useAnalysisStore((s) => s.reset);
+  const startAnalysis = useAnalysisStore((s) => s.start);
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
 
@@ -43,17 +47,23 @@ function Home() {
     if (files.length === 0) return;
     setProgress({ phase: "scan", scanned: 0, total: files.length });
     try {
-      const lib = await buildLibraryFromFiles(files, (p) => setProgress(p));
+      const { library: lib, files: fileEntries } = await buildLibraryFromFiles(
+        files,
+        (p) => setProgress(p),
+      );
       if (lib.tracks.length === 0) {
         setProgress(null);
         alert("Aucun fichier audio compatible (mp3, wav, flac, aac) dans ce dossier.");
         return;
       }
+      resetAnalysis();
       await setLibrary(lib);
+      setFiles(fileEntries);
       setProgress({ phase: "done", scanned: lib.tracks.length, total: lib.tracks.length });
       setTimeout(() => {
         setProgress(null);
         navigate({ to: "/workspace" });
+        void startAnalysis();
       }, 500);
     } catch (err) {
       console.error(err);

@@ -1,6 +1,6 @@
 import { useRef, useState, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Search, SlidersHorizontal, Check, Music2 } from "lucide-react";
+import { Search, SlidersHorizontal, Check, Music2, Loader2, AlertTriangle } from "lucide-react";
 import { useLibraryStore, type Track } from "@/lib/library-store";
 
 function TrackRow({ track, selected, onToggle }: { track: Track; selected: boolean; onToggle: () => void }) {
@@ -20,14 +20,24 @@ function TrackRow({ track, selected, onToggle }: { track: Track; selected: boole
             : "bg-[var(--surface-elevated)] text-[var(--primary-glow)]"
         }`}
       >
-        {selected ? <Check className="h-4 w-4" /> : track.extension ? track.extension : <Music2 className="h-4 w-4" />}
+        {selected ? (
+          <Check className="h-4 w-4" />
+        ) : track.status === "analyzing" ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : track.status === "error" ? (
+          <AlertTriangle className="h-4 w-4 text-[var(--destructive,#ef4444)]" />
+        ) : track.extension ? (
+          track.extension
+        ) : (
+          <Music2 className="h-4 w-4" />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium text-foreground">{track.title}</div>
         <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
           <span>{track.bpm ?? "—"} BPM</span>
           <span className="text-border">·</span>
-          <span>{track.key ?? "—"}</span>
+          <span>{track.camelot ?? "—"}</span>
           <span className="text-border">·</span>
           <span>{track.duration ?? "—"}</span>
         </div>
