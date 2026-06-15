@@ -235,13 +235,11 @@ export function SetBuilder() {
                   <span className="w-7 shrink-0 text-[11px] font-semibold tabular-nums text-muted-foreground">
                     {String(i + 1).padStart(2, "0")}
                   </span>
-                  <div className="grid h-7 w-9 shrink-0 place-items-center rounded-md bg-[var(--primary)]/15 text-[10px] font-semibold text-[var(--primary-glow)] tabular-nums">
-                    {t.camelot ?? "—"}
-                  </div>
+                  <CamelotBadge code={t.camelot} size="xs" />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm">{t.title}</div>
-                    <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground tabular-nums">
-                      {energyDot(t)}
+                    <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground tabular-nums">
+                      <EnergyMeter track={t} />
                       <span>{t.bpm ?? "—"} BPM</span>
                       <span className="text-border">·</span>
                       <span>{t.duration ?? "—"}</span>
