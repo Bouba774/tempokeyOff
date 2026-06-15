@@ -1,6 +1,8 @@
 import { useMemo, useState, useRef } from "react";
 import { toast } from "sonner";
 import { useLibraryStore, type Track } from "@/lib/library-store";
+import { usePlayerStore } from "@/lib/audio/player-store";
+import { Play, Pause } from "lucide-react";
 import { useOrderingStore, type OrderSource } from "@/lib/ordering-store";
 import {
   buildSet,
@@ -233,6 +235,7 @@ export function SetBuilder() {
                       <span>{t.duration ?? "—"}</span>
                     </div>
                   </div>
+                  <SetPlayBtn track={t} />
                   <button
                     onClick={() => removeAt(i)}
                     aria-label="Retirer"
