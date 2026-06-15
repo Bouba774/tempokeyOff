@@ -26,6 +26,19 @@ export const TEMPLATES: TemplateOption[] = [
   { id: "custom", label: "Personnalisé", description: "Format avec variables", example: "{ORDER} - {BPM} - {KEY} - {TITLE}" },
 ];
 
+export const TEMPLATE_VARIABLES = [
+  "{ORDER}",
+  "{TITLE}",
+  "{ARTIST}",
+  "{BPM}",
+  "{KEY}",
+  "{CAMELOT}",
+  "{ENERGY}",
+  "{DURATION}",
+  "{YEAR}",
+  "{GENRE}",
+] as const;
+
 const FORBIDDEN = /[\\/:*?"<>|\u0000-\u001f]/g;
 
 export function sanitizeName(name: string): string {
@@ -45,11 +58,48 @@ function formatCamelot(t: Track): string {
 }
 
 function formatKey(t: Track): string {
-  return t.camelot ?? t.key ?? "—";
+  return t.key ?? t.camelot ?? "—";
 }
 
 function formatDuration(t: Track): string {
   return t.duration ?? "—";
+}
+
+// ---------------------------------------------------------------------------
+// Prefix cleaning
+// ---------------------------------------------------------------------------
+
+// Tokens that commonly appear as a *prefix* before the real title:
+// - "128 BPM"         (BPM annotation)
+// - "8A" / "12B"      (Camelot key)
+// - "001" / "01"      (numbering, 1–4 digits)
+const STRIP_TOKEN = /^(?:\d{1,4}\s*bpm|\d{1,2}[ab](?![a-z])|\d{1,4})/i;
+const STRIP_SEPARATOR = /^[\s\-_|/\\.·•]+/;
+
+/**
+ * Strip common DJ-style prefixes (numbering, BPM, Camelot, separators) from
+ * a base name. Works on the basename only (no extension). Idempotent.
+ *
+ * Examples:
+ *   "01 - Gazo"                  -> "Gazo"
+ *   "001 Gazo"                   -> "Gazo"
+ *   "128 BPM - Gazo"             -> "Gazo"
+ *   "125BPM_Gazo"                -> "Gazo"
+ *   "01 | Gazo"                  -> "Gazo"
+ *   "01_128 BPM_Gazo"            -> "Gazo"
+ *   "001 - 8A - 128 BPM - Gazo"  -> "Gazo"
+ */
+export function cleanPrefix(base: string): string {
+  let s = base;
+  let safety = 16;
+  while (safety-- > 0) {
+    const before = s;
+    s = s.replace(STRIP_SEPARATOR, "");
+    s = s.replace(STRIP_TOKEN, "");
+    if (s === before) break;
+  }
+  const out = s.trim();
+  return out.length > 0 ? out : base.trim();
 }
 
 interface OrderingResult {
@@ -58,11 +108,11 @@ interface OrderingResult {
 }
 
 /**
- * Determine display order. We *always* preserve the caller's input order so
- * the renaming respects the global active order chosen elsewhere in the app
- * (Auto Mix Order, Harmonic Mixing, Set Builder, manual reorder, etc.).
+ * We *always* preserve the caller's input order so renaming respects the
+ * global active order chosen elsewhere in the app (Auto Mix Order, Harmonic
+ * Mixing, Set Builder, manual reorder, BPM/Camelot sorts, etc.).
  */
-function orderTracks(_template: TemplateId, tracks: Track[]): OrderingResult {
+function orderTracks(tracks: Track[]): OrderingResult {
   const ordered = tracks.slice();
   const orderById = new Map<string, number>();
   ordered.forEach((t, i) => orderById.set(t.id, i + 1));
@@ -76,28 +126,28 @@ function widthForCount(n: number): number {
   return Math.max(4, String(n).length);
 }
 
-/** Compute the new base name (without extension) for one track given a template. */
 function buildName(
   template: TemplateId,
   customFormat: string,
   t: Track,
+  title: string,
   order: number,
   total: number,
 ): string {
   const width = widthForCount(total);
   switch (template) {
     case "num2":
-      return `${pad(order, 2)} - ${t.title}`;
+      return `${pad(order, 2)} - ${title}`;
     case "num3":
-      return `${pad(order, 3)} - ${t.title}`;
+      return `${pad(order, 3)} - ${title}`;
     case "num4":
-      return `${pad(order, 4)} - ${t.title}`;
+      return `${pad(order, 4)} - ${title}`;
     case "bpm":
-      return `${formatBpm(t)} - ${t.title}`;
+      return `${formatBpm(t)} - ${title}`;
     case "bpm-key":
-      return `${formatBpm(t)} - ${formatCamelot(t)} - ${t.title}`;
+      return `${formatBpm(t)} - ${formatCamelot(t)} - ${title}`;
     case "dj-order":
-      return `${pad(order, Math.max(3, width))} - ${formatBpm(t)} - ${formatCamelot(t)} - ${t.title}`;
+      return `${pad(order, Math.max(3, width))} - ${formatBpm(t)} - ${formatCamelot(t)} - ${title}`;
     case "custom": {
       const w = Math.max(3, width);
       return customFormat
@@ -105,8 +155,12 @@ function buildName(
         .replace(/\{BPM\}/g, formatBpm(t))
         .replace(/\{CAMELOT\}/g, formatCamelot(t))
         .replace(/\{KEY\}/g, formatKey(t))
-        .replace(/\{TITLE\}/g, t.title)
-        .replace(/\{DURATION\}/g, formatDuration(t));
+        .replace(/\{TITLE\}/g, title)
+        .replace(/\{ARTIST\}/g, title) // no separate artist field yet
+        .replace(/\{ENERGY\}/g, "—")
+        .replace(/\{DURATION\}/g, formatDuration(t))
+        .replace(/\{YEAR\}/g, "—")
+        .replace(/\{GENRE\}/g, "—");
     }
   }
 }
@@ -114,56 +168,78 @@ function buildName(
 export interface RenamePreviewItem {
   trackId: string;
   oldName: string;
+  cleanedName: string;
   newName: string;
   oldPath: string;
   newPath: string;
   unchanged: boolean;
   conflict: boolean;
+  duplicate: boolean;
 }
 
 export interface PreviewResult {
   items: RenamePreviewItem[];
   changeCount: number;
   conflictCount: number;
+  duplicateCount: number;
 }
 
-/** Build a full preview (no I/O). Conflict detection is internal to the batch + parent folder. */
+export interface PreviewOptions {
+  cleanPrefixes?: boolean;
+}
+
+/**
+ * Build a full preview (no I/O). Detects intra-batch + intra-folder conflicts
+ * and flags duplicates (multiple tracks aiming at the same final name).
+ */
 export function buildPreview(
   template: TemplateId,
   customFormat: string,
   tracks: Track[],
+  options: PreviewOptions = {},
 ): PreviewResult {
-  if (tracks.length === 0) return { items: [], changeCount: 0, conflictCount: 0 };
+  if (tracks.length === 0) {
+    return { items: [], changeCount: 0, conflictCount: 0, duplicateCount: 0 };
+  }
 
-  const { ordered, orderById } = orderTracks(template, tracks);
+  const { ordered, orderById } = orderTracks(tracks);
   const total = ordered.length;
+  const cleanEnabled = !!options.cleanPrefixes;
 
-  // Group by parent folder to detect intra-batch collisions per directory.
+  // Per-directory tracking: assigned target names (with auto-suffix on dup),
+  // plus desired names (pre-suffix) for duplicate detection.
   const usedPerDir = new Map<string, Set<string>>();
+  const desiredPerDir = new Map<string, Map<string, number>>();
   const items: RenamePreviewItem[] = [];
 
-  // Iterate in the order supplied by the caller (= active library order).
-  const seq = ordered;
-
-
-
-  for (const t of seq) {
+  for (const t of ordered) {
     const order = orderById.get(t.id) ?? 1;
     const ext = t.extension ? `.${t.extension}` : "";
-    const rawBase = buildName(template, customFormat, t, order, total);
-    const base = sanitizeName(rawBase) || t.title;
-    const desiredName = `${base}${ext}`;
+    const baseTitle = t.title;
+    const cleaned = cleanEnabled ? cleanPrefix(baseTitle) : baseTitle;
+    const titleForBuild = cleanEnabled ? cleaned : baseTitle;
+    const rawBase = buildName(template, customFormat, t, titleForBuild, order, total);
+    const safeBase = sanitizeName(rawBase) || titleForBuild;
+    const desiredName = `${safeBase}${ext}`;
 
     const slashIdx = t.filePath.lastIndexOf("/");
     const dir = slashIdx > 0 ? t.filePath.slice(0, slashIdx) : "";
-    const used = usedPerDir.get(dir) ?? new Set<string>();
 
-    // Auto-suffix on collision within this batch
+    const desiredCounter = desiredPerDir.get(dir) ?? new Map<string, number>();
+    desiredCounter.set(desiredName.toLowerCase(), (desiredCounter.get(desiredName.toLowerCase()) ?? 0) + 1);
+    desiredPerDir.set(dir, desiredCounter);
+
+    const used = usedPerDir.get(dir) ?? new Set<string>();
     let finalName = desiredName;
-    if (used.has(finalName.toLowerCase()) && finalName.toLowerCase() !== t.fileName.toLowerCase()) {
+    let duplicate = false;
+    if (
+      used.has(finalName.toLowerCase()) &&
+      finalName.toLowerCase() !== t.fileName.toLowerCase()
+    ) {
+      duplicate = true;
       let i = 1;
-      while (used.has(`${base}_${i}${ext}`.toLowerCase())) i++;
-      finalName = `${base}_${i}${ext}`;
+      while (used.has(`${safeBase}_${i}${ext}`.toLowerCase())) i++;
+      finalName = `${safeBase}_${i}${ext}`;
     }
     used.add(finalName.toLowerCase());
     usedPerDir.set(dir, used);
@@ -172,14 +248,17 @@ export function buildPreview(
     items.push({
       trackId: t.id,
       oldName: t.fileName,
+      cleanedName: cleanEnabled ? `${sanitizeName(cleaned) || cleaned}${ext}` : t.fileName,
       newName: finalName,
       oldPath: t.filePath,
       newPath,
       unchanged: finalName === t.fileName,
       conflict: false,
+      duplicate,
     });
   }
 
   const changeCount = items.filter((i) => !i.unchanged).length;
-  return { items, changeCount, conflictCount: 0 };
+  const duplicateCount = items.filter((i) => i.duplicate).length;
+  return { items, changeCount, conflictCount: 0, duplicateCount };
 }
