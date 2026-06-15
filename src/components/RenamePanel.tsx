@@ -303,8 +303,8 @@ export function RenamePanel() {
             ) : (
               <>
                 <ul className="divide-y divide-border rounded-lg border border-border bg-card">
-                  {preview.items.slice(0, PREVIEW_LIMIT).map((it) => (
-                    <PreviewRow key={it.trackId} item={it} />
+                  {preview.items.slice(0, PREVIEW_LIMIT).map((it, i) => (
+                    <PreviewRow key={it.trackId} item={it} position={i + 1} />
                   ))}
                 </ul>
                 {preview.items.length > PREVIEW_LIMIT && (
