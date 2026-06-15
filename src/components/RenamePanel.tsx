@@ -35,6 +35,7 @@ export function RenamePanel() {
   const [step, setStep] = useState<Step>("select");
   const [template, setTemplate] = useState<TemplateId>("dj-order");
   const [customFormat, setCustomFormat] = useState("{ORDER} - {BPM} - {KEY} - {TITLE}");
+  const [cleanPrefixes, setCleanPrefixes] = useState(true);
   const [scope, setScope] = useState<"all" | "selection">(selectedIds.size > 0 ? "selection" : "all");
   const [hasHandle, setHasHandle] = useState(false);
   const [grantBusy, setGrantBusy] = useState(false);
