@@ -176,21 +176,16 @@ export function HarmonicMixing() {
 
   return (
     <div className="space-y-3">
-      <div className="rounded-xl border border-[var(--primary)]/40 bg-[var(--primary)]/10 p-4">
+      <div className="rounded-xl border border-[var(--primary)]/40 bg-[var(--primary)]/10 p-4 animate-fade-in">
         <div className="flex items-start gap-3">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[var(--primary)] text-sm font-bold text-[var(--primary-foreground)] tabular-nums">
-            {source.camelot}
-          </div>
+          <CamelotBadge code={source.camelot} size="lg" />
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{source.title}</div>
-            <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground tabular-nums">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground tabular-nums">
               <span>{source.bpm ?? "—"} BPM</span>
               <span className="text-border">·</span>
               <span>{source.key ?? "—"}</span>
-              <span className="text-border">·</span>
-              <EnergyPill track={source} />
-              <span className="text-border">·</span>
-              <span>score {Math.round(energyScore(source) * 100)}</span>
+              <EnergyMeter track={source} showLabel size="md" />
             </div>
           </div>
           <button
