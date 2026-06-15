@@ -19,6 +19,9 @@ import { useLibraryStore, type Track } from "@/lib/library-store";
 import { useOrderingStore, useOrderedTracks } from "@/lib/ordering-store";
 import { FilterSheet } from "./FilterSheet";
 import { TrackDetailSheet } from "./TrackDetailSheet";
+import { CamelotBadge } from "./viz/CamelotBadge";
+import { EnergyMeter } from "./viz/EnergyMeter";
+import { CompatibilityBadge } from "./viz/CompatibilityBadge";
 import {
   confidenceLabel,
   confidenceTone,
