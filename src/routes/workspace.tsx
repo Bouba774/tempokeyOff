@@ -5,13 +5,14 @@ import { useAnalysisStore } from "@/lib/analysis-store";
 import { WorkspaceHeader } from "@/components/WorkspaceHeader";
 import { TrackList } from "@/components/TrackList";
 import { AnalysisPanel } from "@/components/AnalysisPanel";
+import { RenamePanel } from "@/components/RenamePanel";
 
 export const Route = createFileRoute("/workspace")({
   head: () => ({ meta: [{ title: "Workspace — TempoKey" }] }),
   component: Workspace,
 });
 
-type Tab = "library" | "analysis";
+type Tab = "library" | "analysis" | "rename";
 
 function Workspace() {
   const library = useLibraryStore((s) => s.library);
@@ -49,6 +50,7 @@ function Workspace() {
         {([
           { id: "library", label: "Bibliothèque" },
           { id: "analysis", label: "Analyse" },
+          { id: "rename", label: "Renommer" },
         ] as { id: Tab; label: string }[]).map((t) => {
           const active = tab === t.id;
           return (
@@ -70,7 +72,9 @@ function Workspace() {
         })}
       </div>
       <div className="flex flex-1 flex-col min-h-0">
-        {tab === "library" ? <TrackList /> : <AnalysisPanel />}
+        {tab === "library" && <TrackList />}
+        {tab === "analysis" && <AnalysisPanel />}
+        {tab === "rename" && <RenamePanel />}
       </div>
     </div>
   );
