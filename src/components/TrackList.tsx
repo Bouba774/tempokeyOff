@@ -10,7 +10,10 @@ import {
   ArrowUp,
   ArrowDown,
   GripVertical,
+  Play,
+  Pause,
 } from "lucide-react";
+import { usePlayerStore } from "@/lib/audio/player-store";
 import { useLibraryStore, type Track } from "@/lib/library-store";
 import { useOrderingStore, useOrderedTracks } from "@/lib/ordering-store";
 import { FilterSheet } from "./FilterSheet";
@@ -42,41 +45,75 @@ function TrackRow({
   canMoveUp: boolean;
   canMoveDown: boolean;
 }) {
+  const isCurrent = usePlayerStore((s) => s.currentId === track.id);
+  const isPlaying = usePlayerStore((s) => s.isPlaying && s.currentId === track.id);
+  const play = usePlayerStore((s) => s.play);
+  const toggle = usePlayerStore((s) => s.toggle);
+
   return (
     <div
-      className={`group flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition-colors ${
-        selected
-          ? "border-[var(--primary)] bg-[var(--primary)]/10"
-          : "border-border bg-card hover:bg-accent"
+      className={`group flex w-full items-center gap-2 rounded-xl border px-3 py-3 text-left transition-colors ${
+        isCurrent
+          ? "border-[var(--primary)]/60 bg-[var(--primary)]/5"
+          : selected
+            ? "border-[var(--primary)] bg-[var(--primary)]/10"
+            : "border-border bg-card hover:bg-accent"
       }`}
     >
+      {!reorderMode && (
+        <button
+          aria-label={isPlaying ? "Pause" : "Pré-écouter"}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (isCurrent) toggle();
+            else void play(track);
+          }}
+          className={`grid h-9 w-9 shrink-0 place-items-center rounded-full transition-transform active:scale-95 ${
+            isCurrent
+              ? "text-[var(--primary-foreground)]"
+              : "bg-[var(--surface-elevated)] text-[var(--primary-glow)] hover:bg-[var(--primary)]/20"
+          }`}
+          style={
+            isCurrent ? { background: "var(--gradient-primary)" } : undefined
+          }
+        >
+          {isPlaying ? (
+            <Pause className="h-4 w-4" />
+          ) : (
+            <Play className="h-4 w-4 translate-x-[1px]" />
+          )}
+        </button>
+      )}
       <button
         onClick={onToggle}
         className="flex min-w-0 flex-1 items-center gap-3 text-left"
       >
-        <div
-          className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[10px] font-semibold uppercase tabular-nums ${
-            selected
-              ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
-              : "bg-[var(--surface-elevated)] text-[var(--primary-glow)]"
-          }`}
-        >
-          {selected ? (
-            <Check className="h-4 w-4" />
-          ) : reorderMode ? (
-            <span className="tabular-nums">{index + 1}</span>
-          ) : track.status === "analyzing" ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : track.status === "error" ? (
-            <AlertTriangle className="h-4 w-4 text-[var(--destructive,#ef4444)]" />
-          ) : track.extension ? (
-            track.extension
-          ) : (
-            <Music2 className="h-4 w-4" />
-          )}
-        </div>
+        {reorderMode && (
+          <div
+            className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-[10px] font-semibold uppercase tabular-nums ${
+              selected
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)]"
+                : "bg-[var(--surface-elevated)] text-[var(--primary-glow)]"
+            }`}
+          >
+            {selected ? (
+              <Check className="h-4 w-4" />
+            ) : track.status === "analyzing" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : track.status === "error" ? (
+              <AlertTriangle className="h-4 w-4 text-[var(--destructive,#ef4444)]" />
+            ) : (
+              <span className="tabular-nums">{index + 1}</span>
+            )}
+          </div>
+        )}
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-medium text-foreground">{track.title}</div>
+          <div className="truncate text-sm font-medium text-foreground">
+            {selected && !reorderMode && (
+              <Check className="mr-1 inline h-3.5 w-3.5 text-[var(--primary-glow)]" />
+            )}
+            {track.title}
+          </div>
           <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground tabular-nums">
             <span>{track.bpm ?? "—"} BPM</span>
             <span className="text-border">·</span>
