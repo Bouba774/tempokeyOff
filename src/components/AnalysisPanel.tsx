@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useLibraryStore } from "@/lib/library-store";
 import { useAnalysisStore, formatETA } from "@/lib/analysis-store";
-import { Activity, Play, Square, AlertTriangle, Disc3 } from "lucide-react";
+import { Activity, Play, Square, AlertTriangle, Disc3, ListOrdered } from "lucide-react";
 import { HarmonicMixing } from "./HarmonicMixing";
+import { SetBuilder } from "./SetBuilder";
 
 export function AnalysisPanel() {
   const library = useLibraryStore((s) => s.library);
@@ -118,6 +119,16 @@ export function AnalysisPanel() {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card">
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <ListOrdered className="h-4 w-4 text-[var(--primary-glow)]" />
+          <span className="text-sm font-medium">Set Builder</span>
+        </div>
+        <div className="p-3">
+          <SetBuilder />
+        </div>
       </div>
 
       <div className="rounded-xl border border-border bg-card">
