@@ -311,6 +311,7 @@ export function TrackList() {
                   index={orderedIndex}
                   selected={selectedIds.has(track.id)}
                   onToggle={() => toggle(track.id)}
+                  onOpenDetails={() => setDetailId(track.id)}
                   reorderMode={reorderMode}
                   onMoveUp={() => moveBy(track.id, -1)}
                   onMoveDown={() => moveBy(track.id, 1)}
@@ -334,6 +335,7 @@ export function TrackList() {
         filters={filters}
         onChange={setFilters}
       />
+      <TrackDetailSheet trackId={detailId} onClose={() => setDetailId(null)} />
     </div>
   );
 }
