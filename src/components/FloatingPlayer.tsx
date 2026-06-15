@@ -65,6 +65,26 @@ export function FloatingPlayer() {
                 {formatTime(position)} / {formatTime(duration)}
               </div>
             </div>
+            {track && (
+              <div className="mt-0.5 flex items-center gap-2 text-[10px] tabular-nums text-muted-foreground">
+                <span>{track.bpm ?? "—"} BPM</span>
+                <span className="text-border">·</span>
+                <span>{track.camelot ?? "—"}</span>
+                {track.bpmConfidence != null && (
+                  <>
+                    <span className="text-border">·</span>
+                    <span className="text-[var(--primary-glow)]">
+                      {Math.round(track.bpmConfidence * 100)}%
+                    </span>
+                  </>
+                )}
+                {track.suspect && (
+                  <span className="rounded-full bg-amber-500/15 px-1.5 text-[9px] font-semibold text-amber-300">
+                    À vérifier
+                  </span>
+                )}
+              </div>
+            )}
             {track ? (
               <div className="mt-1.5">
                 <Waveform track={track} height={28} />
