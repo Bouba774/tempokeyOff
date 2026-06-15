@@ -6,6 +6,16 @@ export type AudioExtension = (typeof AUDIO_EXTENSIONS)[number];
 
 export type TrackStatus = "pending" | "analyzing" | "done" | "error";
 
+export interface DetectedSnapshot {
+  bpm: number | null;
+  key: string | null;
+  camelot: string | null;
+  bpmConfidence: number | null;
+  keyConfidence: number | null;
+  suspect: boolean;
+  detectedAt: number;
+}
+
 export interface Track {
   id: string;
   title: string;
@@ -22,6 +32,14 @@ export interface Track {
   analyzed: boolean;
   status: TrackStatus;
   error?: string | null;
+  // --- Reliability / corrections (all optional for backwards-compat) ---
+  bpmConfidence?: number | null;
+  keyConfidence?: number | null;
+  bpmLocked?: boolean;
+  keyLocked?: boolean;
+  suspect?: boolean;
+  detected?: DetectedSnapshot | null; // original auto-detected values
+  correctedAt?: number | null;
 }
 
 export interface Library {
