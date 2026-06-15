@@ -329,6 +329,7 @@ export function TrackList() {
                   onMoveDown={() => moveBy(track.id, 1)}
                   canMoveUp={orderedIndex > 0}
                   canMoveDown={orderedIndex < ordered.length - 1}
+                  compareTo={compareTo}
                 />
               </div>
             );
