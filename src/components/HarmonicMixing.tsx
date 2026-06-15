@@ -11,6 +11,9 @@ import {
 } from "@/lib/harmonic";
 import { Disc3, Sparkles, Waves, Flame, ArrowRight, X, CheckCheck, Play, Pause } from "lucide-react";
 import { usePlayerStore } from "@/lib/audio/player-store";
+import { CamelotBadge } from "./viz/CamelotBadge";
+import { EnergyMeter } from "./viz/EnergyMeter";
+import { CompatibilityBadge } from "./viz/CompatibilityBadge";
 
 function PlayBtn({ track }: { track: Track }) {
   const isCurrent = usePlayerStore((s) => s.currentId === track.id);
