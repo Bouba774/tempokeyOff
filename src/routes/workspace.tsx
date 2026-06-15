@@ -30,6 +30,12 @@ function Workspace() {
     void hydrate();
   }, [hydrate]);
 
+  // Hydrate ordering once a library is available.
+  const hydrateOrder = useOrderingStore((s) => s.hydrate);
+  useEffect(() => {
+    if (library) void hydrateOrder(library.id);
+  }, [library, hydrateOrder]);
+
   useEffect(() => {
     if (hydrated && !library) navigate({ to: "/" });
   }, [hydrated, library, navigate]);
