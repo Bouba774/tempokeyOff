@@ -196,6 +196,7 @@ export function HarmonicMixing() {
             items={suggestions.next}
             source={source}
             empty="Pas assez de morceaux analysés pour une recommandation."
+            onApply={() => applySuggestionList("harmonic-progressive", "Progressive Mix", suggestions.next, source)}
           />
           <Section
             icon={<Sparkles className="h-4 w-4" />}
@@ -204,6 +205,7 @@ export function HarmonicMixing() {
             items={suggestions.compatible}
             source={source}
             empty="Aucun morceau compatible trouvé."
+            onApply={() => applySuggestionList("harmonic-smooth", "Compatible Tracks", suggestions.compatible, source)}
           />
           <Section
             icon={<Waves className="h-4 w-4" />}
@@ -212,6 +214,7 @@ export function HarmonicMixing() {
             items={suggestions.smooth}
             source={source}
             empty="Aucune transition douce disponible."
+            onApply={() => applySuggestionList("harmonic-smooth", "Smooth Transition", suggestions.smooth, source)}
           />
           <Section
             icon={<Flame className="h-4 w-4" />}
@@ -220,6 +223,7 @@ export function HarmonicMixing() {
             items={suggestions.energetic}
             source={source}
             empty="Aucune montée d'énergie pertinente."
+            onApply={() => applySuggestionList("harmonic-energy", "Energy Build", suggestions.energetic, source)}
           />
         </>
       )}
