@@ -4,7 +4,6 @@ import {
   Search,
   SlidersHorizontal,
   Check,
-  Music2,
   Loader2,
   AlertTriangle,
   ArrowUp,
@@ -12,11 +11,18 @@ import {
   GripVertical,
   Play,
   Pause,
+  Info,
+  Lock,
 } from "lucide-react";
 import { usePlayerStore } from "@/lib/audio/player-store";
 import { useLibraryStore, type Track } from "@/lib/library-store";
 import { useOrderingStore, useOrderedTracks } from "@/lib/ordering-store";
 import { FilterSheet } from "./FilterSheet";
+import { TrackDetailSheet } from "./TrackDetailSheet";
+import {
+  confidenceLabel,
+  confidenceTone,
+} from "@/lib/corrections";
 import {
   DEFAULT_FILTERS,
   type LibraryFilters,
