@@ -162,6 +162,16 @@ export function RenamePanel() {
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
       <Stepper step={step} />
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-[var(--surface-elevated)] px-3 py-2 text-xs">
+        <span className="text-muted-foreground">Ordre actif</span>
+        <span className="font-semibold text-[var(--primary-glow)]">
+          {activeOrder?.label ?? "Ordre d'import"}
+        </span>
+        <span className="ml-auto text-muted-foreground tabular-nums">
+          {scope === "selection" ? selectedIds.size : tracks.length} morceau
+          {(scope === "selection" ? selectedIds.size : tracks.length) > 1 ? "x" : ""}
+        </span>
+      </div>
       {error && (
         <div className="rounded-lg border border-[var(--destructive,#ef4444)]/40 bg-[var(--destructive,#ef4444)]/10 px-3 py-2 text-sm text-foreground">
           {error}
