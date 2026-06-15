@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useThemeStore, type ThemeMode } from "@/lib/theme-store";
+import { useThemeStore } from "@/lib/theme-store";
 import { useSettingsStore } from "@/lib/settings-store";
 import { useLibraryStore } from "@/lib/library-store";
 import { useAnalysisStore } from "@/lib/analysis-store";
