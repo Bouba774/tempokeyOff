@@ -1,9 +1,7 @@
 import { create } from "zustand";
 import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
 
-export const AUDIO_EXTENSIONS = [
-  "mp3", "wav", "flac", "aiff", "aif", "m4a", "aac", "ogg", "opus",
-] as const;
+export const AUDIO_EXTENSIONS = ["mp3", "wav", "flac", "aac"] as const;
 export type AudioExtension = (typeof AUDIO_EXTENSIONS)[number];
 
 export type TrackStatus = "pending" | "analyzing" | "done" | "error";
@@ -34,8 +32,6 @@ export interface Track {
   analyzed: boolean;
   status: TrackStatus;
   error?: string | null;
-  /** Native Android SAF document URI (loaded lazily via FolderPicker). */
-  nativeUri?: string | null;
   // --- Reliability / corrections (all optional for backwards-compat) ---
   bpmConfidence?: number | null;
   keyConfidence?: number | null;
@@ -77,10 +73,6 @@ interface LibraryState {
   // Transient (not persisted): file handles for the current import session.
   setFiles: (entries: Array<{ trackId: string; file: File }>) => void;
   getFile: (trackId: string) => File | undefined;
-  /** Returns true when a File is available *or* a native URI can be loaded. */
-  hasFileSource: (trackId: string) => boolean;
-  /** Lazily resolve a File for a track, fetching from the native SAF bridge when needed. */
-  ensureFile: (trackId: string) => Promise<File | undefined>;
   clearFiles: () => void;
   fileMapVersion: number;
 }
@@ -158,46 +150,6 @@ export async function buildLibraryFromFiles(
   onProgress?.({ phase: "done", scanned: total, total });
   return { library: lib, files: fileEntries };
 }
-
-/**
- * Build a Library from the result of a native Android folder scan.
- * Files are NOT loaded eagerly — they will be fetched on demand via
- * `useLibraryStore.getState().ensureFile(trackId)`.
- */
-export function buildLibraryFromNative(
-  rootName: string,
-  files: Array<{ uri: string; name: string; path: string; size: number; ext: string }>,
-): Library {
-  const tracks: Track[] = files.map((f, i) => {
-    const id = `n${i}-${f.uri}`;
-    return {
-      id,
-      title: stripExt(f.name),
-      fileName: f.name,
-      filePath: f.path,
-      extension: (f.ext || getExt(f.name)).toLowerCase(),
-      size: typeof f.size === "number" ? f.size : null,
-      fileHash: null,
-      bpm: null,
-      key: null,
-      camelot: null,
-      durationSec: null,
-      duration: null,
-      analyzed: false,
-      status: "pending",
-      error: null,
-      nativeUri: f.uri,
-    };
-  });
-  return {
-    id: `lib_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
-    name: rootName || "Bibliothèque",
-    createdAt: Date.now(),
-    tracks,
-  };
-}
-
-
 
 function metaOf(lib: Library): LibraryMeta {
   return { id: lib.id, name: lib.name, createdAt: lib.createdAt, trackCount: lib.tracks.length };
@@ -314,39 +266,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     set({ fileMapVersion: get().fileMapVersion + 1 });
   },
   getFile: (trackId) => fileMap.get(trackId),
-  hasFileSource: (trackId) => {
-    if (fileMap.has(trackId)) return true;
-    const lib = get().library;
-    const t = lib?.tracks.find((x) => x.id === trackId);
-    return !!t?.nativeUri;
-  },
-  ensureFile: async (trackId) => {
-    const cached = fileMap.get(trackId);
-    if (cached) return cached;
-    const lib = get().library;
-    const t = lib?.tracks.find((x) => x.id === trackId);
-    if (!t?.nativeUri) return undefined;
-    // De-duplicate concurrent loads of the same track.
-    const inflight = inflightLoads.get(trackId);
-    if (inflight) return inflight;
-    const p = (async () => {
-      const { loadNativeFile } = await import("@/lib/native/folder-picker");
-      const file = await loadNativeFile({
-        uri: t.nativeUri!,
-        name: t.fileName,
-        ext: t.extension,
-      });
-      fileMap.set(trackId, file);
-      set({ fileMapVersion: get().fileMapVersion + 1 });
-      return file;
-    })();
-    inflightLoads.set(trackId, p);
-    try {
-      return await p;
-    } finally {
-      inflightLoads.delete(trackId);
-    }
-  },
   clearFiles: () => {
     fileMap.clear();
     set({ fileMapVersion: get().fileMapVersion + 1 });
@@ -355,7 +274,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
 // ---- Transient in-memory file handles (not persisted) ----
 const fileMap = new Map<string, File>();
-const inflightLoads = new Map<string, Promise<File>>();
 
 // ---- Debounced persistence of library updates during analysis ----
 let persistTimer: ReturnType<typeof setTimeout> | null = null;

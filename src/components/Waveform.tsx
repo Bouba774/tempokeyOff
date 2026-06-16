@@ -27,7 +27,7 @@ export function Waveform({
   const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const ensureFile = useLibraryStore((s) => s.ensureFile);
+  const getFile = useLibraryStore((s) => s.getFile);
   const fileMapVersion = useLibraryStore((s) => s.fileMapVersion);
 
   const isCurrent = usePlayerStore((s) => s.currentId === track.id);
@@ -51,7 +51,7 @@ export function Waveform({
         setData(cached);
         return;
       }
-      const file = await ensureFile(track.id);
+      const file = getFile(track.id);
       if (!file) return;
       setLoading(true);
       const generated = await generateWaveform(track.id, file);
@@ -62,7 +62,7 @@ export function Waveform({
     return () => {
       cancelled = true;
     };
-  }, [track.id, data, ensureFile, fileMapVersion]);
+  }, [track.id, data, getFile, fileMapVersion]);
 
   // Draw
   const draw = useCallback(() => {

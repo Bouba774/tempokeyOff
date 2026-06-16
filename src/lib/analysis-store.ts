@@ -100,7 +100,7 @@ async function runQueue(
     for (;;) {
       const track = next();
       if (!track) return;
-      const file = await useLibraryStore.getState().ensureFile(track.id);
+      const file = useLibraryStore.getState().getFile(track.id);
       if (!file) continue;
 
       useLibraryStore.getState().updateTrack(track.id, { status: "analyzing" });
@@ -174,7 +174,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     const lib = useLibraryStore.getState().library;
     if (!lib) return;
     const queue = lib.tracks.filter(
-      (t) => t.status === "pending" && useLibraryStore.getState().hasFileSource(t.id),
+      (t) => t.status === "pending" && !!useLibraryStore.getState().getFile(t.id),
     );
     if (queue.length === 0) return;
     set({
@@ -200,7 +200,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     if (!lib) return;
     const idSet = new Set(ids);
     const queue = lib.tracks.filter(
-      (t) => idSet.has(t.id) && useLibraryStore.getState().hasFileSource(t.id),
+      (t) => idSet.has(t.id) && !!useLibraryStore.getState().getFile(t.id),
     );
     if (queue.length === 0) return;
     // Reset status so the UI shows progress; do NOT clear locked fields.

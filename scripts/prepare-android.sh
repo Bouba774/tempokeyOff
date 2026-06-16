@@ -4,17 +4,16 @@
 # Pipeline:
 #   1. Install Capacitor toolchain (idempotent)
 #   2. Build a dedicated SPA bundle into dist/android/ via vite.android.config.mjs
-#   3. Flatten the bundle so index.html sits at dist/android/index.html
-#      (Vite preserves the input HTML path, so the raw output is
-#       dist/android/android-template/index.html — we move it up.)
-#   4. Fetch logo + generate Android icons / splash via @capacitor/assets
-#   5. Add Android platform (if missing) + cap sync
+#      (this is what fixes the previous "splash then black screen" bug — the old
+#       pipeline staged TanStack Start's SSR output, which can't run in a WebView).
+#   3. Fetch logo + generate Android icons / splash via @capacitor/assets
+#   4. Add Android platform (if missing) + cap sync
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-LOGO_URL="${TEMPOKEY_LOGO_URL:-https://tempokey.lovable.app/__l5e/assets-v1/eafb172a-82c5-4678-b411-cb277431b9af/tempokey-logo.png}"
+LOGO_URL="${TEMPOKEY_LOGO_URL:-https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/11ea2fe2-f750-4207-924d-713a57d9fe69}"
 WEB_DIR="dist/android"
 RES_DIR="resources"
 
@@ -33,27 +32,12 @@ echo "▶ Building dedicated Android SPA bundle → ${WEB_DIR}…"
 rm -rf "$WEB_DIR"
 npm run build:android
 
-# Flatten: Vite emits dist/android/android-template/index.html because the
-# input HTML lives at android-template/index.html. Move everything up so
-# Capacitor finds dist/android/index.html.
-if [ ! -f "$WEB_DIR/index.html" ] && [ -f "$WEB_DIR/android-template/index.html" ]; then
-  echo "▶ Flattening dist/android/android-template → dist/android"
-  # Move (or merge) everything from the nested folder up one level.
-  shopt -s dotglob nullglob
-  mv "$WEB_DIR/android-template/"* "$WEB_DIR/" || true
-  shopt -u dotglob nullglob
-  rmdir "$WEB_DIR/android-template" 2>/dev/null || true
-fi
-
 if [ ! -f "$WEB_DIR/index.html" ]; then
-  echo "❌ Android index.html missing after build" >&2
-  echo "── Tree of $WEB_DIR ──" >&2
-  find "$WEB_DIR" -maxdepth 4 -type f >&2 || true
-  echo "── Any index.html found ──" >&2
-  find "$WEB_DIR" -name 'index.html' >&2 || true
+  echo "❌ Android SPA build did not produce ${WEB_DIR}/index.html" >&2
+  ls -la "$WEB_DIR" || true
   exit 1
 fi
-echo "  ✓ index.html present at $WEB_DIR/index.html"
+echo "  ✓ index.html present"
 echo "  ✓ asset count: $(find "$WEB_DIR" -type f | wc -l)"
 
 echo "▶ Preparing icon & splash sources…"
@@ -78,16 +62,6 @@ npx @capacitor/assets generate --android \
   --splashBackgroundColorDark "#0A0D14" || {
     echo "⚠ @capacitor/assets failed; continuing with platform defaults." >&2
   }
-
-echo "▶ Installing native FolderPicker plugin (Storage Access Framework)…"
-PKG_DIR="android/app/src/main/java/app/lovable/tempokey"
-PLUGIN_DIR="$PKG_DIR/plugins"
-mkdir -p "$PLUGIN_DIR"
-cp -f android-resources/native-plugin/FolderPickerPlugin.kt "$PLUGIN_DIR/FolderPickerPlugin.kt"
-# Replace the generated MainActivity so the plugin is registered at startup.
-cp -f android-resources/native-plugin/MainActivity.kt "$PKG_DIR/MainActivity.kt"
-# Older Capacitor templates emit a Java MainActivity — remove it to avoid duplicate classes.
-rm -f "$PKG_DIR/MainActivity.java"
 
 echo "▶ Syncing Capacitor…"
 npx cap sync android

@@ -43,9 +43,9 @@ function Workspace() {
   // Auto-start analysis whenever pending tracks with in-memory file handles exist.
   useEffect(() => {
     if (!library || running) return;
-    const hasFileSource = useLibraryStore.getState().hasFileSource;
+    const getFile = useLibraryStore.getState().getFile;
     const hasWork = library.tracks.some(
-      (t) => t.status === "pending" && hasFileSource(t.id),
+      (t) => t.status === "pending" && !!getFile(t.id),
     );
     if (hasWork) void startAnalysis();
   }, [library, running, startAnalysis]);

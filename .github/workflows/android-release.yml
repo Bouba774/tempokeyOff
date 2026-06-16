@@ -1,4 +1,4 @@
-name: Android Release (signed APK + AAB)
+name: Android Release (single signed APK)
 
 on:
   push:
@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   build:
-    name: Build TempoKey.apk + TempoKey.aab
+    name: Build TempoKey.apk
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -30,10 +30,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 22
+      - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "20"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -70,65 +70,38 @@ jobs:
         run: bash scripts/android-version.sh "${VERSION_CODE}" "${VERSION_NAME}"
 
       # ── Signing ────────────────────────────────────────────────
-      # Decode the release keystore from repo secrets. Supports both the
-      # canonical `ANDROID_KEYSTORE_BASE64` secret and the legacy
-      # `ANDROID_KEYSTORE` name. If neither is present, generate an
-      # ephemeral CI keystore so the workflow still produces a signed APK
-      # (an unsigned release APK is rejected by Android).
+      # Use the provided release keystore if the repo secrets are set,
+      # otherwise generate a deterministic keystore on the runner so we
+      # ALWAYS ship a signed release APK (an unsigned APK is rejected
+      # by Android with "package appears to be invalid").
       - name: Resolve signing config
         id: signing
         env:
-          ANDROID_KEYSTORE_B64_NEW: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_B64_OLD: ${{ secrets.ANDROID_KEYSTORE }}
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         run: |
           set -e
           mkdir -p android/app
-          KS=android/app/tempokey-release.keystore
-
-          B64="${ANDROID_KEYSTORE_B64_NEW:-$ANDROID_KEYSTORE_B64_OLD}"
-
-          if [ -n "$B64" ] && [ -n "$ANDROID_KEY_ALIAS" ] \
+          KS=android/app/release.keystore
+          if [ -n "$ANDROID_KEYSTORE_B64" ] && [ -n "$ANDROID_KEY_ALIAS" ] \
              && [ -n "$ANDROID_KEY_PASSWORD" ] && [ -n "$ANDROID_STORE_PASSWORD" ]; then
-            echo "::notice::Using repository-supplied release keystore."
-            printf '%s' "$B64" | base64 -d > "$KS"
+            echo "Using repository-supplied release keystore."
+            echo "$ANDROID_KEYSTORE_B64" | base64 -d > "$KS"
             ALIAS="$ANDROID_KEY_ALIAS"
             KPW="$ANDROID_KEY_PASSWORD"
             SPW="$ANDROID_STORE_PASSWORD"
-            SIGNED_BY="repo-secret"
           else
             echo "::warning::No release keystore secrets — generating an ephemeral CI keystore."
             ALIAS="tempokey"
             KPW="tempokey-ci-pass"
             SPW="tempokey-ci-pass"
-            SIGNED_BY="ephemeral-ci"
             keytool -genkeypair -v -keystore "$KS" \
               -alias "$ALIAS" -storepass "$SPW" -keypass "$KPW" \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -dname "CN=TempoKey CI, OU=Build, O=TempoKey, L=NA, S=NA, C=US"
           fi
-
-          # Diagnostic output (no secrets leak).
-          if [ -f "$KS" ]; then
-            echo "✓ keystore present: $KS ($(stat -c%s "$KS" 2>/dev/null || stat -f%z "$KS") bytes)"
-          else
-            echo "❌ keystore missing at $KS" >&2
-            exit 1
-          fi
-          echo "✓ alias configured: ${ALIAS}"
-          echo "✓ signing source: ${SIGNED_BY}"
-
-          # Validate the keystore actually contains the alias.
-          if keytool -list -keystore "$KS" -storepass "$SPW" -alias "$ALIAS" >/dev/null 2>&1; then
-            echo "✓ alias '${ALIAS}' found inside keystore"
-          else
-            echo "❌ alias '${ALIAS}' NOT found in keystore — check secrets" >&2
-            keytool -list -keystore "$KS" -storepass "$SPW" 2>/dev/null | grep -i alias || true
-            exit 1
-          fi
-
           {
             echo "ALIAS=$ALIAS"
             echo "KPW=$KPW"
@@ -136,16 +109,20 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Inject signing config into android/app/build.gradle
+        env:
+          ALIAS: ${{ steps.signing.outputs.ALIAS }}
+          KPW: ${{ steps.signing.outputs.KPW }}
+          SPW: ${{ steps.signing.outputs.SPW }}
         run: |
-          cat >> android/app/build.gradle <<'GRADLE'
+          cat >> android/app/build.gradle <<GRADLE
 
           android {
               signingConfigs {
                   release {
-                      storeFile file("tempokey-release.keystore")
-                      storePassword System.getenv("ANDROID_STORE_PASSWORD")
-                      keyAlias System.getenv("ANDROID_KEY_ALIAS")
-                      keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+                      storeFile file('release.keystore')
+                      storePassword System.getenv('SPW')
+                      keyAlias System.getenv('ALIAS')
+                      keyPassword System.getenv('KPW')
                   }
               }
               buildTypes {
@@ -157,61 +134,44 @@ jobs:
               }
           }
           GRADLE
-          echo "✓ signing block appended to android/app/build.gradle"
 
-      - name: Build Release APK + AAB
+      - name: Build Release APK
         working-directory: android
         env:
-          ANDROID_KEY_ALIAS: ${{ steps.signing.outputs.ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ steps.signing.outputs.KPW }}
-          ANDROID_STORE_PASSWORD: ${{ steps.signing.outputs.SPW }}
-        run: |
-          ./gradlew --no-daemon clean assembleRelease bundleRelease
+          ALIAS: ${{ steps.signing.outputs.ALIAS }}
+          KPW: ${{ steps.signing.outputs.KPW }}
+          SPW: ${{ steps.signing.outputs.SPW }}
+        run: ./gradlew --no-daemon clean assembleRelease
 
-      - name: Locate, rename & verify artifacts
+      - name: Locate, rename & verify APK
         id: verify
         run: |
           set -e
           mkdir -p artifacts
-
           APK="$(find android/app/build/outputs/apk/release -name '*.apk' | head -n1)"
           if [ -z "$APK" ] || [ ! -f "$APK" ]; then
             echo "❌ No release APK produced." >&2
             find android/app/build/outputs -maxdepth 5 -type f || true
             exit 1
           fi
-          cp "$APK" artifacts/TempoKey.apk
-          echo "Produced APK: artifacts/TempoKey.apk ($(du -h artifacts/TempoKey.apk | cut -f1))"
+          OUT="artifacts/TempoKey.apk"
+          cp "$APK" "$OUT"
+          echo "Produced: $OUT ($(du -h "$OUT" | cut -f1))"
 
-          AAB="$(find android/app/build/outputs/bundle/release -name '*.aab' | head -n1 || true)"
-          if [ -n "$AAB" ] && [ -f "$AAB" ]; then
-            cp "$AAB" artifacts/TempoKey.aab
-            echo "Produced AAB: artifacts/TempoKey.aab ($(du -h artifacts/TempoKey.aab | cut -f1))"
-          else
-            echo "::warning::No AAB produced (bundleRelease may have failed)."
-          fi
-
-          # Verify APK signature with apksigner (fails the build if invalid).
+          # Verify signature with apksigner (fails the build if invalid).
           BT="$(ls -d "$ANDROID_HOME"/build-tools/* 2>/dev/null | sort -V | tail -n1)"
           if [ -z "$BT" ] || [ ! -x "$BT/apksigner" ]; then
             echo "::warning::apksigner not found, skipping verification."
           else
-            echo "Verifying APK signature with $BT/apksigner…"
-            "$BT/apksigner" verify --verbose artifacts/TempoKey.apk
-            "$BT/apksigner" verify --print-certs artifacts/TempoKey.apk | head -n 20
-            echo "✓ APK signature valid"
+            echo "Verifying with $BT/apksigner…"
+            "$BT/apksigner" verify --verbose "$OUT"
+            "$BT/apksigner" verify --print-certs "$OUT" | head -n 20
           fi
+          echo "out=$OUT" >> "$GITHUB_OUTPUT"
 
-      - name: Upload TempoKey APK
+      - name: Upload TempoKey.apk
         uses: actions/upload-artifact@v4
         with:
-          name: TempoKey-APK-v${{ env.VERSION_NAME }}
+          name: TempoKey-v${{ env.VERSION_NAME }}
           path: artifacts/TempoKey.apk
           if-no-files-found: error
-
-      - name: Upload TempoKey AAB
-        uses: actions/upload-artifact@v4
-        with:
-          name: TempoKey-AAB-v${{ env.VERSION_NAME }}
-          path: artifacts/TempoKey.aab
-          if-no-files-found: warn
