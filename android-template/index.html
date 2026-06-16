@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="fr" class="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
+    />
+    <meta name="theme-color" content="#0A0D14" />
+    <title>TempoKey</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #0a0d14;
+        color: #e6e9ef;
+        font-family:
+          -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+        -webkit-tap-highlight-color: transparent;
+        overscroll-behavior: none;
+      }
+      #app {
+        min-height: 100vh;
+      }
+      /* Visible boot fallback — replaced as soon as React mounts.
+         If JS never executes (or the bundle 404s) the user sees this
+         instead of a black screen. */
+      #tk-boot {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        place-items: center;
+        background: #0a0d14;
+        z-index: 9999;
+      }
+      #tk-boot .inner {
+        text-align: center;
+        max-width: 22rem;
+        padding: 1.5rem;
+      }
+      #tk-boot h1 {
+        font-size: 1.4rem;
+        margin: 0 0 0.5rem;
+        letter-spacing: -0.01em;
+      }
+      #tk-boot p {
+        color: #9aa3b2;
+        font-size: 0.9rem;
+        margin: 0;
+      }
+      #tk-boot .spinner {
+        width: 28px;
+        height: 28px;
+        border: 2px solid #2a3142;
+        border-top-color: #6ea8fe;
+        border-radius: 50%;
+        animation: tk-spin 0.8s linear infinite;
+        margin: 0 auto 1rem;
+      }
+      #tk-boot.error .spinner {
+        display: none;
+      }
+      #tk-boot pre {
+        margin-top: 1rem;
+        text-align: left;
+        background: #11151f;
+        border: 1px solid #1f2535;
+        border-radius: 8px;
+        padding: 0.75rem;
+        font-size: 0.72rem;
+        color: #f08a8a;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 12rem;
+        overflow: auto;
+      }
+      #tk-boot button {
+        margin-top: 1rem;
+        background: #6ea8fe;
+        color: #0a0d14;
+        border: 0;
+        padding: 0.6rem 1.1rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.9rem;
+      }
+      @keyframes tk-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="tk-boot" role="status" aria-live="polite">
+      <div class="inner">
+        <div class="spinner"></div>
+        <h1>TempoKey</h1>
+        <p id="tk-boot-msg">Démarrage…</p>
+      </div>
+    </div>
+
+    <script>
+      // Diagnostic bootstrap — visible to `adb logcat | grep -i chromium`.
+      // Logs each milestone so a black screen can always be traced.
+      (function () {
+        var log = function (m) {
+          try {
+            console.log("[TempoKey]", m);
+          } catch (_) {}
+        };
+        window.__TK_DIAG__ = { steps: [], errors: [] };
+        window.__tkStep = function (s) {
+          window.__TK_DIAG__.steps.push({ s: s, t: Date.now() });
+          log("step " + s);
+          var msg = document.getElementById("tk-boot-msg");
+          if (msg) msg.textContent = s;
+        };
+        window.__tkReady = function () {
+          var b = document.getElementById("tk-boot");
+          if (b && b.parentNode) b.parentNode.removeChild(b);
+          log("ready");
+        };
+        window.__tkFatal = function (err) {
+          var b = document.getElementById("tk-boot");
+          if (!b) return;
+          b.classList.add("error");
+          var msg = err && (err.stack || err.message || String(err));
+          window.__TK_DIAG__.errors.push(msg);
+          b.querySelector(".inner").innerHTML =
+            '<h1>TempoKey n\u2019a pas pu d\u00e9marrer</h1>' +
+            '<p>Une erreur est survenue au lancement de l\u2019application.</p>' +
+            '<pre>' + (msg || "Erreur inconnue").replace(/[<>&]/g, "") + '</pre>' +
+            '<button onclick="location.reload()">Red\u00e9marrer</button>';
+          log("fatal " + msg);
+        };
+        window.addEventListener("error", function (e) {
+          log("window.error " + (e.error && e.error.stack || e.message));
+        });
+        window.addEventListener("unhandledrejection", function (e) {
+          log("unhandledrejection " + (e.reason && e.reason.stack || e.reason));
+        });
+        // Safety timeout — if React hasn't taken over after 12s, show fatal.
+        setTimeout(function () {
+          if (document.getElementById("tk-boot") && !window.__TK_MOUNTED__) {
+            window.__tkFatal(
+              new Error(
+                "Timeout: l\u2019interface n\u2019a pas pu se monter en 12s.\n" +
+                  "\u00c9tapes atteintes: " +
+                  window.__TK_DIAG__.steps.map(function (x) { return x.s; }).join(" \u2192 "),
+              ),
+            );
+          }
+        }, 12000);
+        window.__tkStep("html-loaded");
+      })();
+    </script>
+
+    <script type="module" src="/src/android-entry.tsx"></script>
+  </body>
+</html>
