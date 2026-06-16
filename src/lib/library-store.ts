@@ -272,6 +272,39 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     set({ fileMapVersion: get().fileMapVersion + 1 });
   },
   getFile: (trackId) => fileMap.get(trackId),
+  hasFileSource: (trackId) => {
+    if (fileMap.has(trackId)) return true;
+    const lib = get().library;
+    const t = lib?.tracks.find((x) => x.id === trackId);
+    return !!t?.nativeUri;
+  },
+  ensureFile: async (trackId) => {
+    const cached = fileMap.get(trackId);
+    if (cached) return cached;
+    const lib = get().library;
+    const t = lib?.tracks.find((x) => x.id === trackId);
+    if (!t?.nativeUri) return undefined;
+    // De-duplicate concurrent loads of the same track.
+    const inflight = inflightLoads.get(trackId);
+    if (inflight) return inflight;
+    const p = (async () => {
+      const { loadNativeFile } = await import("@/lib/native/folder-picker");
+      const file = await loadNativeFile({
+        uri: t.nativeUri!,
+        name: t.fileName,
+        ext: t.extension,
+      });
+      fileMap.set(trackId, file);
+      set({ fileMapVersion: get().fileMapVersion + 1 });
+      return file;
+    })();
+    inflightLoads.set(trackId, p);
+    try {
+      return await p;
+    } finally {
+      inflightLoads.delete(trackId);
+    }
+  },
   clearFiles: () => {
     fileMap.clear();
     set({ fileMapVersion: get().fileMapVersion + 1 });
