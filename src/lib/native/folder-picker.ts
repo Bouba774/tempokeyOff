@@ -76,7 +76,15 @@ export async function loadNativeFile(entry: {
 }): Promise<File> {
   const res = await FolderPicker.readFile({ uri: entry.uri });
   const bytes = base64ToBytes(res.data);
+  // Copy into a fresh ArrayBuffer to satisfy strict File/Blob typing.
+  const ab = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
   const ext = (entry.ext ?? entry.name.split(".").pop() ?? "").toLowerCase();
   const type = entry.mime || MIME_BY_EXT[ext] || "application/octet-stream";
+  return new File([ab], entry.name, { type });
+}
+
+// (unreachable original return retained below for clarity, removed)
+const _unused = 0;
+void _unused;
   return new File([bytes], entry.name, { type });
 }
