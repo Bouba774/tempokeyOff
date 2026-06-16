@@ -32,6 +32,8 @@ export interface Track {
   analyzed: boolean;
   status: TrackStatus;
   error?: string | null;
+  /** Native Android SAF document URI (loaded lazily via FolderPicker). */
+  nativeUri?: string | null;
   // --- Reliability / corrections (all optional for backwards-compat) ---
   bpmConfidence?: number | null;
   keyConfidence?: number | null;
