@@ -1,15 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLibraryStore } from "@/lib/library-store";
 import { useAnalysisStore, formatETA } from "@/lib/analysis-store";
-import {
-  Activity,
-  Play,
-  Square,
-  AlertTriangle,
-  Disc3,
-  ListOrdered,
-  RefreshCw,
-} from "lucide-react";
+import { Activity, Play, Square, AlertTriangle, Disc3, ListOrdered, RefreshCw } from "lucide-react";
 import { HarmonicMixing } from "./HarmonicMixing";
 import { SetBuilder } from "./SetBuilder";
 import { DjDashboard } from "./viz/DjDashboard";
@@ -43,13 +35,14 @@ export function AnalysisPanel() {
 
   const eta = formatETA(useAnalysisStore.getState());
   const hasPendingWithFiles = tracks.some(
-    (t) => (t.status === "pending" || t.status === "error") && !!useLibraryStore.getState().getFile(t.id),
+    (t) =>
+      (t.status === "pending" || t.status === "error") &&
+      !!useLibraryStore.getState().getFile(t.id),
   );
 
   return (
     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
       <DjDashboard />
-
 
       <div className="rounded-xl border border-border bg-card p-4">
         <div className="flex items-center justify-between mb-2">
@@ -146,7 +139,9 @@ export function AnalysisPanel() {
         </div>
         <ul className="divide-y divide-border">
           {log.length === 0 && (
-            <li className="px-4 py-6 text-sm text-muted-foreground text-center">Aucune analyse pour l'instant.</li>
+            <li className="px-4 py-6 text-sm text-muted-foreground text-center">
+              Aucune analyse pour l'instant.
+            </li>
           )}
           {log.slice(0, 30).map((e) => {
             const tone = confidenceTone(confidenceLabel(e.confidence));
@@ -170,9 +165,7 @@ export function AnalysisPanel() {
                   <span className="text-xs tabular-nums text-muted-foreground">
                     {e.bpm ?? "—"} BPM · {e.camelot ?? "—"}
                     {e.confidence != null && (
-                      <span className={`ml-1 ${tone.text}`}>
-                        {Math.round(e.confidence * 100)}%
-                      </span>
+                      <span className={`ml-1 ${tone.text}`}>{Math.round(e.confidence * 100)}%</span>
                     )}
                   </span>
                 )}

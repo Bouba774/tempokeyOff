@@ -4,11 +4,7 @@ import { useLibraryStore, type Track } from "@/lib/library-store";
 import { usePlayerStore } from "@/lib/audio/player-store";
 import { Play, Pause } from "lucide-react";
 import { useOrderingStore, type OrderSource } from "@/lib/ordering-store";
-import {
-  buildSet,
-  SET_PRESETS,
-  type SetType,
-} from "@/lib/setbuilder";
+import { buildSet, SET_PRESETS, type SetType } from "@/lib/setbuilder";
 import { EnergyMeter } from "./viz/EnergyMeter";
 import { CamelotBadge } from "./viz/CamelotBadge";
 import {
@@ -30,7 +26,6 @@ const TYPE_ICONS: Record<SetType, React.ReactNode> = {
   peak: <Flame className="h-4 w-4" />,
   closing: <Moon className="h-4 w-4" />,
 };
-
 
 function SetPlayBtn({ track }: { track: Track }) {
   const isCurrent = usePlayerStore((s) => s.currentId === track.id);
@@ -57,9 +52,7 @@ export function SetBuilder() {
   const library = useLibraryStore((s) => s.library);
   const tracks = library?.tracks ?? [];
   const setOrder = useOrderingStore((s) => s.setOrder);
-  const analyzedCount = tracks.filter(
-    (t) => t.analyzed && t.bpm && t.camelot,
-  ).length;
+  const analyzedCount = tracks.filter((t) => t.analyzed && t.bpm && t.camelot).length;
 
   const [activeType, setActiveType] = useState<SetType | null>(null);
   const [setTracks, setSetTracks] = useState<Track[]>([]);
@@ -124,10 +117,7 @@ export function SetBuilder() {
   // Available tracks to add ------------------------------------------
   const inSet = useMemo(() => new Set(setTracks.map((t) => t.id)), [setTracks]);
   const available = useMemo(
-    () =>
-      tracks.filter(
-        (t) => t.analyzed && t.bpm && t.camelot && !inSet.has(t.id),
-      ),
+    () => tracks.filter((t) => t.analyzed && t.bpm && t.camelot && !inSet.has(t.id)),
     [tracks, inSet],
   );
 
@@ -178,13 +168,9 @@ export function SetBuilder() {
         <div className="rounded-xl border border-border bg-card">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center gap-2">
-              <span className="text-[var(--primary-glow)]">
-                {TYPE_ICONS[activeType]}
-              </span>
+              <span className="text-[var(--primary-glow)]">{TYPE_ICONS[activeType]}</span>
               <div>
-                <div className="text-sm font-medium">
-                  {SET_PRESETS[activeType].label}
-                </div>
+                <div className="text-sm font-medium">{SET_PRESETS[activeType].label}</div>
                 <div className="text-[11px] text-muted-foreground tabular-nums">
                   {setTracks.length} morceau{setTracks.length > 1 ? "x" : ""}
                   {validated && (

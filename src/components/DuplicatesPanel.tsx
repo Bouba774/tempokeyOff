@@ -59,17 +59,14 @@ export function DuplicatesPanel() {
       <div className="grid grid-cols-3 gap-2">
         <Stat label="Groupes" value={visible.length} />
         <Stat label="Exacts" value={visible.filter((g) => g.kind === "exact").length} />
-        <Stat
-          label="Fichiers"
-          value={visible.reduce((n, g) => n + g.tracks.length, 0)}
-        />
+        <Stat label="Fichiers" value={visible.reduce((n, g) => n + g.tracks.length, 0)} />
       </div>
 
       {visible.length > 0 && (
         <div className="flex items-center justify-between gap-2">
           <p className="text-xs text-muted-foreground">
-            Conserve un fichier par groupe, retire les autres de la bibliothèque
-            (le fichier sur le disque n'est pas supprimé).
+            Conserve un fichier par groupe, retire les autres de la bibliothèque (le fichier sur le
+            disque n'est pas supprimé).
           </p>
           <button
             onClick={() => void applyAll()}
@@ -85,7 +82,9 @@ export function DuplicatesPanel() {
         <div className="rounded-xl border border-dashed border-border bg-card/50 p-10 text-center">
           <CheckCircle2 className="mx-auto h-8 w-8 text-[var(--primary-glow)]" />
           <p className="mt-3 text-sm font-medium text-foreground">Bibliothèque propre</p>
-          <p className="mt-1 text-xs text-muted-foreground">Aucun doublon détecté pour le moment.</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Aucun doublon détecté pour le moment.
+          </p>
         </div>
       )}
 
@@ -111,9 +110,7 @@ function Stat({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl border border-border bg-card p-3">
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div className="mt-1 text-xl font-semibold tabular-nums">
-        {value.toLocaleString()}
-      </div>
+      <div className="mt-1 text-xl font-semibold tabular-nums">{value.toLocaleString()}</div>
     </div>
   );
 }
@@ -145,9 +142,7 @@ function GroupCard({
           {group.kind === "exact" ? "Exact" : "Probable"}
         </span>
         <span className="truncate text-sm font-medium flex-1">{group.key}</span>
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {group.tracks.length}
-        </span>
+        <span className="text-xs text-muted-foreground tabular-nums">{group.tracks.length}</span>
       </div>
       <ul className="divide-y divide-border">
         {group.tracks.map((t) => (
@@ -166,8 +161,7 @@ function GroupCard({
           className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-[var(--primary-foreground)]"
           style={{ background: "var(--gradient-primary)" }}
         >
-          <Trash2 className="h-3.5 w-3.5" /> Conserver 1, retirer{" "}
-          {group.tracks.length - 1}
+          <Trash2 className="h-3.5 w-3.5" /> Conserver 1, retirer {group.tracks.length - 1}
         </button>
       </div>
     </li>

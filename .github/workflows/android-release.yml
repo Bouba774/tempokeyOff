@@ -25,6 +25,7 @@ jobs:
     env:
       VERSION_NAME: ${{ github.event.inputs.versionName || '1.0.0' }}
       VERSION_CODE: ${{ github.event.inputs.versionCode || github.run_number }}
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -73,8 +74,9 @@ jobs:
             npm install
           fi
 
-      - name: TypeScript & lint (non-blocking)
+      - name: Format / TypeScript / lint (non-blocking)
         run: |
+          npx prettier --check . || echo "::warning::Prettier formatting issues"
           npx tsc --noEmit || echo "::warning::TypeScript reported issues"
           npm run lint || echo "::warning::Lint reported issues"
 
