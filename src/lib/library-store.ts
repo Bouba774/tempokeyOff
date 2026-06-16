@@ -193,6 +193,9 @@ export function buildLibraryFromNative(
     createdAt: Date.now(),
     tracks,
   };
+}
+
+
 
 function metaOf(lib: Library): LibraryMeta {
   return { id: lib.id, name: lib.name, createdAt: lib.createdAt, trackCount: lib.tracks.length };
