@@ -290,3 +290,70 @@ html.dark, html.light {
   border-radius: var(--radius);
   box-shadow: var(--shadow-card);
 }
+
+/* Élévation Material-like sur hover (desktop) — sans effet sur tactile */
+@utility hover-lift {
+  transition: transform 180ms cubic-bezier(0.2, 0, 0, 1),
+              box-shadow 180ms cubic-bezier(0.2, 0, 0, 1),
+              border-color 180ms cubic-bezier(0.2, 0, 0, 1);
+  @media (hover: hover) {
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-elegant);
+    }
+  }
+}
+
+/* Skeleton shimmer — léger, basé sur tokens (compatible thème clair/sombre) */
+.shimmer {
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in oklab, var(--foreground) 8%, transparent);
+}
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--foreground) 10%, transparent),
+    transparent
+  );
+  animation: shimmer-sweep 1.4s ease-in-out infinite;
+}
+@keyframes shimmer-sweep {
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shimmer::after { animation: none; }
+}
+
+/* Équaliseur "now-playing" — barres animées discrètes */
+@keyframes eq-bar {
+  0%, 100% { height: 30%; }
+  50%      { height: 100%; }
+}
+
+/* Ripple Material-3 léger (overlay sur boutons opt-in) */
+@utility ripple {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at var(--rx, 50%) var(--ry, 50%),
+      color-mix(in oklab, currentColor 22%, transparent) 0%,
+      transparent 60%
+    );
+    opacity: 0;
+    transition: opacity 320ms ease;
+    pointer-events: none;
+  }
+  &:active::after { opacity: 1; transition-duration: 60ms; }
+}
+
