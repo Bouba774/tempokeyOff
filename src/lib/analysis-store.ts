@@ -174,7 +174,7 @@ export const useAnalysisStore = create<AnalysisState>((set, get) => ({
     const lib = useLibraryStore.getState().library;
     if (!lib) return;
     const queue = lib.tracks.filter(
-      (t) => t.status === "pending" && !!useLibraryStore.getState().getFile(t.id),
+      (t) => t.status === "pending" && useLibraryStore.getState().hasFileSource(t.id),
     );
     if (queue.length === 0) return;
     set({
