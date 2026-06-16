@@ -60,7 +60,18 @@ jobs:
           echo "package-lock.json: $(test -f package-lock.json && echo yes || echo no)"
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: |
+          if [ -f bun.lock ] || [ -f bun.lockb ]; then
+            bun install --frozen-lockfile || bun install
+          elif [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f pnpm-lock.yaml ]; then
+            npx --yes pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            corepack enable && yarn install --frozen-lockfile
+          else
+            npm install
+          fi
 
       - name: TypeScript & lint (non-blocking)
         run: |
