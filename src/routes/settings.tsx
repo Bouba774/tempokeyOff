@@ -1,4 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Shield, FileText, BarChart3, Bug, ChevronRight } from "lucide-react";
+import { usePrivacyStore } from "@/lib/analytics-store";
 import {
   ArrowLeft,
   Sun,
@@ -350,6 +352,9 @@ function SettingsPage() {
           </p>
         </Section>
 
+        {/* CONFIDENTIALITÉ */}
+        <PrivacySection />
+
         {/* À PROPOS */}
         <Section title="À propos" icon={<Info className="h-3.5 w-3.5" />}>
           <Card>
@@ -394,20 +399,22 @@ function SettingsPage() {
                 Merci aux DJs et producteurs qui ont testé TempoKey et partagé leurs retours, ainsi qu'aux mainteneurs des bibliothèques open source qui rendent cet outil possible.
               </div>
             </details>
-            <details className="group border-t border-border/60">
-              <summary className="list-none cursor-pointer flex items-center gap-3 px-4 py-3.5 hover:bg-accent/30 transition-colors">
-                <Info className="h-4 w-4 text-muted-foreground" />
-                <span className="flex-1 text-sm font-medium">Licences open source</span>
-                <span className="text-xs text-muted-foreground group-open:rotate-180 transition-transform">▾</span>
-              </summary>
-              <ul className="px-4 pb-4 pt-3 text-xs text-muted-foreground space-y-1.5 border-t border-border/60">
-                <li>React, TanStack Start &amp; Router — MIT</li>
-                <li>Tailwind CSS — MIT</li>
-                <li>Zustand, idb-keyval — MIT</li>
-                <li>Lucide Icons — ISC</li>
-                <li>Sonner — MIT</li>
-              </ul>
-            </details>
+            <Link
+              to="/licenses"
+              className="flex items-center gap-3 border-t border-border/60 px-4 py-3.5 text-sm hover:bg-accent/30 transition-colors"
+            >
+              <FileText className="h-4 w-4 text-muted-foreground" />
+              <span className="flex-1 font-medium">Licences open source</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
+            <Link
+              to="/privacy"
+              className="flex items-center gap-3 border-t border-border/60 px-4 py-3.5 text-sm hover:bg-accent/30 transition-colors"
+            >
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              <span className="flex-1 font-medium">Politique de confidentialité</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
           </Card>
         </Section>
       </div>
