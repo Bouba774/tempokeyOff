@@ -4,10 +4,12 @@ import { toast } from "sonner";
 import {
   useLibraryStore,
   buildLibraryFromFiles,
+  buildLibraryFromNative,
   type ImportProgress,
 } from "@/lib/library-store";
 import { useAnalysisStore } from "@/lib/analysis-store";
 import { ImportProgressModal } from "@/components/ImportProgressModal";
+import { FolderPicker, isNativeAndroid } from "@/lib/native/folder-picker";
 import {
   FolderPlus,
   Clock,
@@ -87,8 +89,54 @@ function Home() {
     void hydrate();
   }, [hydrate]);
 
-  function pickFolder() {
+  async function pickFolder() {
+    if (isNativeAndroid()) {
+      await pickFolderNative();
+      return;
+    }
     inputRef.current?.click();
+  }
+
+  async function pickFolderNative() {
+    try {
+      let picked: { uri: string; name: string };
+      try {
+        picked = await FolderPicker.pickFolder();
+      } catch (err) {
+        const msg = (err as { message?: string })?.message ?? "";
+        if (msg.includes("CANCELLED")) return;
+        throw err;
+      }
+      setProgress({ phase: "scan", scanned: 0, total: 0 });
+      const scan = await FolderPicker.scanFolder({ uri: picked.uri });
+      if (scan.audioFiles === 0) {
+        setProgress(null);
+        toast.error("Aucun fichier audio trouvé", {
+          description: `${scan.scannedDirs} dossier(s), ${scan.foundFiles} fichier(s) inspecté(s).`,
+        });
+        return;
+      }
+      setProgress({ phase: "build", scanned: scan.audioFiles, total: scan.audioFiles });
+      const lib = buildLibraryFromNative(scan.rootName || picked.name, scan.files);
+      resetAnalysis();
+      await setLibrary(lib);
+      setProgress({ phase: "done", scanned: lib.tracks.length, total: lib.tracks.length });
+      toast.success(`${lib.tracks.length.toLocaleString()} morceaux importés`, {
+        description: `${lib.name} · ${scan.scannedDirs} dossier(s) analysé(s)`,
+      });
+      setTimeout(() => {
+        setProgress(null);
+        navigate({ to: "/workspace" });
+        void startAnalysis();
+      }, 400);
+    } catch (err) {
+      console.error("[tempokey] native picker failed", err);
+      setProgress(null);
+      toast.error("Import impossible", {
+        description:
+          "Vérifie que le dossier est accessible (mémoire interne ou carte SD) et réessaie.",
+      });
+    }
   }
 
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
@@ -140,7 +188,7 @@ function Home() {
       <input
         ref={inputRef}
         type="file"
-        accept=".mp3,.wav,.flac,.aac,audio/*"
+        accept=".mp3,.wav,.flac,.aiff,.aif,.m4a,.aac,.ogg,.opus,audio/*"
         multiple
         /* @ts-expect-error non-standard but widely supported attributes */
         webkitdirectory=""

@@ -37,7 +37,7 @@ export function AnalysisPanel() {
   const hasPendingWithFiles = tracks.some(
     (t) =>
       (t.status === "pending" || t.status === "error") &&
-      !!useLibraryStore.getState().getFile(t.id),
+      useLibraryStore.getState().hasFileSource(t.id),
   );
 
   return (
