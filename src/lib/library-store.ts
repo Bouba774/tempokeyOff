@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval";
+import { createNativeFile, type NativeAudioEntry } from "@/lib/native/folder-picker";
 
 export const AUDIO_EXTENSIONS = ["mp3", "wav", "flac", "aac"] as const;
 export type AudioExtension = (typeof AUDIO_EXTENSIONS)[number];
