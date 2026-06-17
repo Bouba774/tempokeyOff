@@ -151,13 +151,14 @@ export function createNativeFile(entry: NativeAudioEntry): File {
     const s = Math.max(0, start | 0);
     const e = Math.max(s, Math.min(size, end | 0));
     const len = e - s;
+    const sliceArrayBuffer = async (): Promise<ArrayBuffer> => {
+      if (cached) return cached.slice(s, e);
+      return readNativeFile(uri, s, len);
+    };
     return {
       size: len,
       type: mime,
-      async arrayBuffer() {
-        if (cached) return cached.slice(s, e);
-        return readNativeFile(uri, s, len);
-      },
+      arrayBuffer: sliceArrayBuffer,
       slice(a: number = 0, b: number = len) {
         return makeSlice(s + a, s + b);
       },
@@ -165,7 +166,7 @@ export function createNativeFile(entry: NativeAudioEntry): File {
         throw new Error("stream() not supported on native file");
       },
       async text() {
-        const buf = await this.arrayBuffer();
+        const buf = await sliceArrayBuffer();
         return new TextDecoder().decode(buf);
       },
     } as unknown as Blob;
