@@ -63,6 +63,9 @@ npx @capacitor/assets generate --android \
     echo "⚠ @capacitor/assets failed; continuing with platform defaults." >&2
   }
 
+echo "▶ Patching Android project (permissions + native plugin)…"
+bash "$ROOT_DIR/scripts/patch-android-permissions.sh"
+
 echo "▶ Syncing Capacitor…"
 npx cap sync android
 
