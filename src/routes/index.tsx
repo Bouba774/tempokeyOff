@@ -8,6 +8,8 @@ import {
 } from "@/lib/library-store";
 import { useAnalysisStore } from "@/lib/analysis-store";
 import { ImportProgressModal } from "@/components/ImportProgressModal";
+import { PermissionExplainModal } from "@/components/PermissionExplainModal";
+import { ensureAudioAccess, isAndroidNative } from "@/lib/native/permissions";
 import {
   FolderPlus,
   Clock,
@@ -82,12 +84,34 @@ function Home() {
   const startAnalysis = useAnalysisStore((s) => s.start);
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const [permModalOpen, setPermModalOpen] = useState(false);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
 
-  function pickFolder() {
+  async function pickFolder() {
+    // On Android natif : afficher l'écran d'explication AVANT la dialog système.
+    // Sur le web/desktop : aucune permission requise (SAF via input[webkitdirectory]).
+    if (await isAndroidNative()) {
+      setPermModalOpen(true);
+      return;
+    }
+    inputRef.current?.click();
+  }
+
+  async function onPermissionContinue() {
+    setPermModalOpen(false);
+    const { ok, state } = await ensureAudioAccess();
+    if (!ok) {
+      toast.error("Accès refusé", {
+        description:
+          state === "denied"
+            ? "Activez l'accès « Musique et audio » dans les Paramètres Android."
+            : "Permission non accordée. Réessayez ou vérifiez les Paramètres Android.",
+      });
+      return;
+    }
     inputRef.current?.click();
   }
 
