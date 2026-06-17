@@ -1,0 +1,20 @@
+<!--
+  Permissions Android natives utilisées par TempoKey.
+  Ce fichier sert de référence — le patch script (scripts/patch-android-permissions.sh)
+  injecte ces lignes dans android/app/src/main/AndroidManifest.xml après `cap add android`.
+
+  Stratégie :
+  - Android 13+ (API 33+) : READ_MEDIA_AUDIO uniquement (permission ciblée musique).
+  - Android 10-12 (API 29-32) : READ_EXTERNAL_STORAGE avec maxSdkVersion="32".
+  - POST_NOTIFICATIONS : pour signaler la fin d'analyse en arrière-plan (Android 13+).
+  - INTERNET : déjà présent par défaut Capacitor, conservé pour le WebView.
+
+  L'import de DOSSIERS passe par le Storage Access Framework (ACTION_OPEN_DOCUMENT_TREE)
+  côté JS via l'input[type=file][webkitdirectory] qui déclenche le SAF natif —
+  aucune permission supplémentaire requise pour ce flux.
+-->
+<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+<uses-permission
+    android:name="android.permission.READ_EXTERNAL_STORAGE"
+    android:maxSdkVersion="32" />
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
