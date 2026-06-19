@@ -4,18 +4,10 @@ import { toast } from "sonner";
 import {
   useLibraryStore,
   buildLibraryFromFiles,
-  buildLibraryFromNativeEntries,
   type ImportProgress,
 } from "@/lib/library-store";
 import { useAnalysisStore } from "@/lib/analysis-store";
 import { ImportProgressModal } from "@/components/ImportProgressModal";
-import { PermissionExplainModal } from "@/components/PermissionExplainModal";
-import { ensureAudioAccess, isAndroidNative } from "@/lib/native/permissions";
-import {
-  pickNativeFolder,
-  listNativeAudio,
-  isNativeFolderPickerAvailable,
-} from "@/lib/native/folder-picker";
 import {
   FolderPlus,
   Clock,
@@ -90,89 +82,13 @@ function Home() {
   const startAnalysis = useAnalysisStore((s) => s.start);
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
-  const [permModalOpen, setPermModalOpen] = useState(false);
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
 
-  async function pickFolder() {
-    // On Android natif : afficher l'écran d'explication AVANT la dialog système.
-    // Sur le web/desktop : aucune permission requise (SAF via input[webkitdirectory]).
-    if (await isAndroidNative()) {
-      setPermModalOpen(true);
-      return;
-    }
+  function pickFolder() {
     inputRef.current?.click();
-  }
-
-  async function onPermissionContinue() {
-    setPermModalOpen(false);
-    const { ok, state } = await ensureAudioAccess();
-    if (!ok) {
-      toast.error("Accès refusé", {
-        description:
-          state === "denied"
-            ? "Activez l'accès « Musique et audio » dans les Paramètres Android."
-            : "Permission non accordée. Réessayez ou vérifiez les Paramètres Android.",
-      });
-      return;
-    }
-    // Prefer the native SAF folder picker on Android (folder selection,
-    // persistent URI permissions, recursive scan incl. SD card).
-    if (await isNativeFolderPickerAvailable()) {
-      await runNativeFolderImport();
-      return;
-    }
-    inputRef.current?.click();
-  }
-
-  async function runNativeFolderImport() {
-    let folderName = "Dossier";
-    try {
-      const picked = await pickNativeFolder();
-      folderName = picked.name || folderName;
-      setProgress({ phase: "scan", scanned: 0, total: 0 });
-      const { entries } = await listNativeAudio(picked.treeUri, (e) => {
-        setProgress({ phase: "scan", scanned: e.scanned, total: Math.max(e.scanned, e.found) });
-      });
-      if (entries.length === 0) {
-        setProgress(null);
-        toast.error("Aucun fichier audio compatible", {
-          description: "Formats : mp3, wav, flac, aiff, m4a, aac, ogg, opus.",
-        });
-        return;
-      }
-      setProgress({ phase: "build", scanned: 0, total: entries.length });
-      const { library: lib, files: fileEntries } = await buildLibraryFromNativeEntries(
-        entries,
-        folderName,
-        (p) => setProgress(p),
-      );
-      resetAnalysis();
-      await setLibrary(lib);
-      setFiles(fileEntries);
-      setProgress({ phase: "done", scanned: lib.tracks.length, total: lib.tracks.length });
-      toast.success(`${lib.tracks.length.toLocaleString()} morceaux importés`, {
-        description: lib.name,
-      });
-      setTimeout(() => {
-        setProgress(null);
-        navigate({ to: "/workspace" });
-        void startAnalysis();
-      }, 400);
-    } catch (err) {
-      setProgress(null);
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg === "CANCELLED") return;
-      console.error("[tempokey] native import failed", err);
-      toast.error("Import impossible", {
-        description:
-          msg === "ROOT_UNAVAILABLE"
-            ? "Le dossier sélectionné n'est plus accessible (carte SD retirée ?)."
-            : "Vérifie que le dossier est accessible et réessaie.",
-      });
-    }
   }
 
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
@@ -232,14 +148,6 @@ function Home() {
         onChange={handleFiles}
         className="hidden"
       />
-
-      <PermissionExplainModal
-        open={permModalOpen}
-        onContinue={onPermissionContinue}
-        onCancel={() => setPermModalOpen(false)}
-      />
-
-
 
       {/* HERO */}
       <section className="relative overflow-hidden px-6 pt-10 pb-8">

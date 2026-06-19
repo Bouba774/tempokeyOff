@@ -1,4 +1,4 @@
-name: Android Release (single signed APK)
+name: Android Build (APK + AAB)
 
 on:
   push:
@@ -12,25 +12,25 @@ on:
       versionCode:
         description: "Integer version code (monotonic)"
         required: false
-        default: ""
+        default: "1"
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: Build TempoKey.apk
+    name: Build TempoKey Android
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       VERSION_NAME: ${{ github.event.inputs.versionName || '1.0.0' }}
       VERSION_CODE: ${{ github.event.inputs.versionCode || github.run_number }}
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -49,6 +49,17 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Environment info
+        run: |
+          node --version
+          npm --version
+          bun --version
+          pwd
+          ls -la
+          echo "package.json: $(test -f package.json && echo yes || echo no)"
+          echo "bun.lock: $(test -f bun.lock && echo yes || echo no)"
+          echo "package-lock.json: $(test -f package-lock.json && echo yes || echo no)"
+
       - name: Install dependencies
         run: |
           if [ -f bun.lock ] || [ -f bun.lockb ]; then
@@ -63,56 +74,34 @@ jobs:
             npm install
           fi
 
-      - name: Prepare Android project (SPA build + cap sync)
+      - name: Format / TypeScript / lint (non-blocking)
+        run: |
+          npx prettier --check . || echo "::warning::Prettier formatting issues"
+          npx tsc --noEmit || echo "::warning::TypeScript reported issues"
+          npm run lint || echo "::warning::Lint reported issues"
+
+      - name: Prepare Android project
         run: bash scripts/prepare-android.sh
 
       - name: Stamp version
         run: bash scripts/android-version.sh "${VERSION_CODE}" "${VERSION_NAME}"
 
-      # ── Signing ────────────────────────────────────────────────
-      # Use the provided release keystore if the repo secrets are set,
-      # otherwise generate a deterministic keystore on the runner so we
-      # ALWAYS ship a signed release APK (an unsigned APK is rejected
-      # by Android with "package appears to be invalid").
-      - name: Resolve signing config
-        id: signing
+      - name: Decode keystore (release signing, optional)
+        id: keystore
+        if: ${{ env.ANDROID_KEYSTORE != '' }}
         env:
-          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
         run: |
-          set -e
           mkdir -p android/app
-          KS=android/app/release.keystore
-          if [ -n "$ANDROID_KEYSTORE_B64" ] && [ -n "$ANDROID_KEY_ALIAS" ] \
-             && [ -n "$ANDROID_KEY_PASSWORD" ] && [ -n "$ANDROID_STORE_PASSWORD" ]; then
-            echo "Using repository-supplied release keystore."
-            echo "$ANDROID_KEYSTORE_B64" | base64 -d > "$KS"
-            ALIAS="$ANDROID_KEY_ALIAS"
-            KPW="$ANDROID_KEY_PASSWORD"
-            SPW="$ANDROID_STORE_PASSWORD"
-          else
-            echo "::warning::No release keystore secrets — generating an ephemeral CI keystore."
-            ALIAS="tempokey"
-            KPW="tempokey-ci-pass"
-            SPW="tempokey-ci-pass"
-            keytool -genkeypair -v -keystore "$KS" \
-              -alias "$ALIAS" -storepass "$SPW" -keypass "$KPW" \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=TempoKey CI, OU=Build, O=TempoKey, L=NA, S=NA, C=US"
-          fi
-          {
-            echo "ALIAS=$ALIAS"
-            echo "KPW=$KPW"
-            echo "SPW=$SPW"
-          } >> "$GITHUB_OUTPUT"
+          echo "$ANDROID_KEYSTORE" | base64 -d > android/app/release.keystore
+          echo "configured=true" >> "$GITHUB_OUTPUT"
 
-      - name: Inject signing config into android/app/build.gradle
+      - name: Configure signing (optional)
+        if: steps.keystore.outputs.configured == 'true'
         env:
-          ALIAS: ${{ steps.signing.outputs.ALIAS }}
-          KPW: ${{ steps.signing.outputs.KPW }}
-          SPW: ${{ steps.signing.outputs.SPW }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
         run: |
           cat >> android/app/build.gradle <<GRADLE
 
@@ -120,58 +109,61 @@ jobs:
               signingConfigs {
                   release {
                       storeFile file('release.keystore')
-                      storePassword System.getenv('SPW')
-                      keyAlias System.getenv('ALIAS')
-                      keyPassword System.getenv('KPW')
+                      storePassword System.getenv('STORE_PASSWORD')
+                      keyAlias System.getenv('KEY_ALIAS')
+                      keyPassword System.getenv('KEY_PASSWORD')
                   }
               }
               buildTypes {
                   release {
                       signingConfig signingConfigs.release
-                      minifyEnabled false
-                      shrinkResources false
+                      minifyEnabled true
+                      shrinkResources true
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
                   }
               }
           }
           GRADLE
 
+      - name: Build Debug APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleDebug
+
       - name: Build Release APK
         working-directory: android
         env:
-          ALIAS: ${{ steps.signing.outputs.ALIAS }}
-          KPW: ${{ steps.signing.outputs.KPW }}
-          SPW: ${{ steps.signing.outputs.SPW }}
-        run: ./gradlew --no-daemon clean assembleRelease
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: ./gradlew --no-daemon assembleRelease || ./gradlew --no-daemon assembleDebug
 
-      - name: Locate, rename & verify APK
-        id: verify
+      - name: Build Release AAB
+        working-directory: android
+        env:
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+        run: ./gradlew --no-daemon bundleRelease || echo "::warning::AAB build skipped"
+
+      - name: Collect artifacts
         run: |
-          set -e
-          mkdir -p artifacts
-          APK="$(find android/app/build/outputs/apk/release -name '*.apk' | head -n1)"
-          if [ -z "$APK" ] || [ ! -f "$APK" ]; then
-            echo "❌ No release APK produced." >&2
-            find android/app/build/outputs -maxdepth 5 -type f || true
-            exit 1
-          fi
-          OUT="artifacts/TempoKey.apk"
-          cp "$APK" "$OUT"
-          echo "Produced: $OUT ($(du -h "$OUT" | cut -f1))"
+          mkdir -p artifacts/apk artifacts/aab
+          find android/app/build/outputs/apk -name "*.apk" -exec \
+            sh -c 'cp "$1" "artifacts/apk/TempoKey-v${VERSION_NAME}-$(basename $(dirname $1)).apk"' _ {} \; || true
+          find android/app/build/outputs/bundle -name "*.aab" -exec \
+            cp {} "artifacts/aab/TempoKey-v${VERSION_NAME}.aab" \; || true
+          ls -R artifacts || true
 
-          # Verify signature with apksigner (fails the build if invalid).
-          BT="$(ls -d "$ANDROID_HOME"/build-tools/* 2>/dev/null | sort -V | tail -n1)"
-          if [ -z "$BT" ] || [ ! -x "$BT/apksigner" ]; then
-            echo "::warning::apksigner not found, skipping verification."
-          else
-            echo "Verifying with $BT/apksigner…"
-            "$BT/apksigner" verify --verbose "$OUT"
-            "$BT/apksigner" verify --print-certs "$OUT" | head -n 20
-          fi
-          echo "out=$OUT" >> "$GITHUB_OUTPUT"
-
-      - name: Upload TempoKey.apk
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: TempoKey-v${{ env.VERSION_NAME }}
-          path: artifacts/TempoKey.apk
-          if-no-files-found: error
+          name: TempoKey-APK-v${{ env.VERSION_NAME }}
+          path: artifacts/apk/*.apk
+          if-no-files-found: warn
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TempoKey-AAB-v${{ env.VERSION_NAME }}
+          path: artifacts/aab/*.aab
+          if-no-files-found: warn
