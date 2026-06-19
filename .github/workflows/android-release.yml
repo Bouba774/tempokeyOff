@@ -1,4 +1,4 @@
-name: Android Build (APK + AAB)
+name: Build TempoKey Android APK
 
 on:
   push:
@@ -10,16 +10,16 @@ on:
         required: false
         default: "1.0.0"
       versionCode:
-        description: "Integer version code (monotonic)"
+        description: "Integer version code"
         required: false
-        default: "1"
+        default: ""
 
 permissions:
   contents: read
 
 jobs:
   build:
-    name: Build TempoKey Android
+    name: TempoKey.apk
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -30,7 +30,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -46,19 +46,10 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Setup Android SDK
+      - name: Setup Android SDK (+ build-tools for apksigner)
         uses: android-actions/setup-android@v3
-
-      - name: Environment info
-        run: |
-          node --version
-          npm --version
-          bun --version
-          pwd
-          ls -la
-          echo "package.json: $(test -f package.json && echo yes || echo no)"
-          echo "bun.lock: $(test -f bun.lock && echo yes || echo no)"
-          echo "package-lock.json: $(test -f package-lock.json && echo yes || echo no)"
+        with:
+          packages: "platform-tools platforms;android-34 build-tools;34.0.0"
 
       - name: Install dependencies
         run: |
@@ -66,104 +57,54 @@ jobs:
             bun install --frozen-lockfile || bun install
           elif [ -f package-lock.json ]; then
             npm ci
-          elif [ -f pnpm-lock.yaml ]; then
-            npx --yes pnpm install --frozen-lockfile
-          elif [ -f yarn.lock ]; then
-            corepack enable && yarn install --frozen-lockfile
           else
             npm install
           fi
 
-      - name: Format / TypeScript / lint (non-blocking)
-        run: |
-          npx prettier --check . || echo "::warning::Prettier formatting issues"
-          npx tsc --noEmit || echo "::warning::TypeScript reported issues"
-          npm run lint || echo "::warning::Lint reported issues"
-
-      - name: Prepare Android project
+      - name: Prepare Android project (SPA build + Capacitor sync)
         run: bash scripts/prepare-android.sh
 
       - name: Stamp version
         run: bash scripts/android-version.sh "${VERSION_CODE}" "${VERSION_NAME}"
 
-      - name: Decode keystore (release signing, optional)
-        id: keystore
-        if: ${{ env.ANDROID_KEYSTORE != '' }}
-        env:
-          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
-        run: |
-          mkdir -p android/app
-          echo "$ANDROID_KEYSTORE" | base64 -d > android/app/release.keystore
-          echo "configured=true" >> "$GITHUB_OUTPUT"
-
-      - name: Configure signing (optional)
-        if: steps.keystore.outputs.configured == 'true'
-        env:
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-        run: |
-          cat >> android/app/build.gradle <<GRADLE
-
-          android {
-              signingConfigs {
-                  release {
-                      storeFile file('release.keystore')
-                      storePassword System.getenv('STORE_PASSWORD')
-                      keyAlias System.getenv('KEY_ALIAS')
-                      keyPassword System.getenv('KEY_PASSWORD')
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                      minifyEnabled true
-                      shrinkResources true
-                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-                  }
-              }
-          }
-          GRADLE
-
-      - name: Build Debug APK
+      - name: Build single signed APK (debug keystore — always installable)
         working-directory: android
-        run: ./gradlew --no-daemon assembleDebug
-
-      - name: Build Release APK
-        working-directory: android
-        env:
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-        run: ./gradlew --no-daemon assembleRelease || ./gradlew --no-daemon assembleDebug
-
-      - name: Build Release AAB
-        working-directory: android
-        env:
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
-        run: ./gradlew --no-daemon bundleRelease || echo "::warning::AAB build skipped"
-
-      - name: Collect artifacts
         run: |
-          mkdir -p artifacts/apk artifacts/aab
-          find android/app/build/outputs/apk -name "*.apk" -exec \
-            sh -c 'cp "$1" "artifacts/apk/TempoKey-v${VERSION_NAME}-$(basename $(dirname $1)).apk"' _ {} \; || true
-          find android/app/build/outputs/bundle -name "*.aab" -exec \
-            cp {} "artifacts/aab/TempoKey-v${VERSION_NAME}.aab" \; || true
-          ls -R artifacts || true
+          # The debug build type is signed with Android's auto-generated debug
+          # keystore. The resulting APK installs on any device and is exactly
+          # what we want for sideloading & internal distribution.
+          # (For Play Store, generate a release keystore and bundle separately.)
+          ./gradlew --no-daemon clean assembleDebug
 
-      - name: Upload APK artifact
+      - name: Locate, rename & verify APK
+        id: apk
+        run: |
+          set -e
+          SRC=$(find android/app/build/outputs/apk -name "app-debug.apk" | head -n1)
+          if [ -z "$SRC" ] || [ ! -f "$SRC" ]; then
+            echo "❌ No APK produced by gradle" >&2
+            find android/app/build/outputs -type f >&2 || true
+            exit 1
+          fi
+          mkdir -p artifacts
+          OUT="artifacts/TempoKey.apk"
+          cp "$SRC" "$OUT"
+          echo "Built APK: $OUT ($(stat -c%s "$OUT") bytes)"
+
+          BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n1)
+          APKSIGNER="${BUILD_TOOLS}apksigner"
+          if [ -x "$APKSIGNER" ]; then
+            echo "▶ Verifying APK signature with $APKSIGNER"
+            "$APKSIGNER" verify --verbose "$OUT"
+          else
+            echo "⚠ apksigner not found at $APKSIGNER — falling back to jarsigner"
+            jarsigner -verify -verbose "$OUT" | tail -n 5
+          fi
+          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+
+      - name: Upload TempoKey.apk
         uses: actions/upload-artifact@v4
         with:
-          name: TempoKey-APK-v${{ env.VERSION_NAME }}
-          path: artifacts/apk/*.apk
-          if-no-files-found: warn
-
-      - name: Upload AAB artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: TempoKey-AAB-v${{ env.VERSION_NAME }}
-          path: artifacts/aab/*.aab
-          if-no-files-found: warn
+          name: TempoKey-v${{ env.VERSION_NAME }}-build${{ env.VERSION_CODE }}
+          path: artifacts/TempoKey.apk
+          if-no-files-found: error
