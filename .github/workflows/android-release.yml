@@ -1,4 +1,4 @@
-name: Build TempoKey Android APK
+name: Build TempoKey Android (APK + AAB, signed)
 
 on:
   push:
@@ -19,21 +19,26 @@ permissions:
 
 jobs:
   build:
-    name: TempoKey.apk
+    name: TempoKey signed release
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       VERSION_NAME: ${{ github.event.inputs.versionName || '1.0.0' }}
       VERSION_CODE: ${{ github.event.inputs.versionCode || github.run_number }}
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      # Signing — exported so Gradle's System.getenv() picks them up.
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 22
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -46,7 +51,7 @@ jobs:
           distribution: "temurin"
           java-version: "17"
 
-      - name: Setup Android SDK (+ build-tools for apksigner)
+      - name: Setup Android SDK (incl. build-tools for apksigner)
         uses: android-actions/setup-android@v3
         with:
           packages: "platform-tools platforms;android-34 build-tools;34.0.0"
@@ -67,44 +72,98 @@ jobs:
       - name: Stamp version
         run: bash scripts/android-version.sh "${VERSION_CODE}" "${VERSION_NAME}"
 
-      - name: Build single signed APK (debug keystore — always installable)
-        working-directory: android
-        run: |
-          # The debug build type is signed with Android's auto-generated debug
-          # keystore. The resulting APK installs on any device and is exactly
-          # what we want for sideloading & internal distribution.
-          # (For Play Store, generate a release keystore and bundle separately.)
-          ./gradlew --no-daemon clean assembleDebug
-
-      - name: Locate, rename & verify APK
-        id: apk
+      - name: Decode release keystore
         run: |
           set -e
-          SRC=$(find android/app/build/outputs/apk -name "app-debug.apk" | head -n1)
-          if [ -z "$SRC" ] || [ ! -f "$SRC" ]; then
-            echo "❌ No APK produced by gradle" >&2
-            find android/app/build/outputs -type f >&2 || true
+          mkdir -p android/app
+          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            echo "❌ Secret ANDROID_KEYSTORE_BASE64 is empty." >&2
             exit 1
           fi
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/tempokey-release.keystore
+          ls -l android/app/tempokey-release.keystore
+          file android/app/tempokey-release.keystore || true
+          echo "▶ Signing inputs (values hidden):"
+          echo "  keystore file : $( [ -s android/app/tempokey-release.keystore ] && echo present || echo MISSING )"
+          echo "  store password: $( [ -n "${ANDROID_STORE_PASSWORD:-}" ] && echo set || echo MISSING )"
+          echo "  key alias     : $( [ -n "${ANDROID_KEY_ALIAS:-}" ] && echo set || echo MISSING )"
+          echo "  key password  : $( [ -n "${ANDROID_KEY_PASSWORD:-}" ] && echo set || echo MISSING )"
+
+      - name: Inject release signing into build.gradle
+        run: |
+          set -e
+          GRADLE=android/app/build.gradle
+          if grep -q "signingConfigs.release" "$GRADLE"; then
+            echo "signingConfigs.release already present — skipping append"
+          else
+            cat >> "$GRADLE" <<'GRADLE'
+
+          // ───── TempoKey release signing (injected by CI) ─────
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file("tempokey-release.keystore")
+                      storePassword System.getenv("ANDROID_STORE_PASSWORD")
+                      keyAlias System.getenv("ANDROID_KEY_ALIAS")
+                      keyPassword System.getenv("ANDROID_KEY_PASSWORD")
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                      minifyEnabled false
+                      shrinkResources false
+                  }
+              }
+          }
+          GRADLE
+            echo "✓ release signing block appended to $GRADLE"
+          fi
+          tail -n 30 "$GRADLE"
+
+      - name: Build signed Release APK + AAB
+        working-directory: android
+        run: |
+          ./gradlew --no-daemon clean assembleRelease bundleRelease
+
+      - name: Collect, rename & verify artifacts
+        id: artifacts
+        run: |
+          set -e
           mkdir -p artifacts
-          OUT="artifacts/TempoKey.apk"
-          cp "$SRC" "$OUT"
-          echo "Built APK: $OUT ($(stat -c%s "$OUT") bytes)"
+
+          APK_SRC=$(find android/app/build/outputs/apk/release -name "*.apk" ! -name "*unsigned*" | head -n1)
+          if [ -z "$APK_SRC" ]; then
+            echo "❌ No signed release APK found." >&2
+            find android/app/build/outputs/apk -type f >&2 || true
+            exit 1
+          fi
+          cp "$APK_SRC" artifacts/TempoKey.apk
+          echo "APK : $APK_SRC → artifacts/TempoKey.apk ($(stat -c%s artifacts/TempoKey.apk) bytes)"
+
+          AAB_SRC=$(find android/app/build/outputs/bundle/release -name "*.aab" | head -n1 || true)
+          if [ -n "$AAB_SRC" ]; then
+            cp "$AAB_SRC" artifacts/TempoKey.aab
+            echo "AAB : $AAB_SRC → artifacts/TempoKey.aab ($(stat -c%s artifacts/TempoKey.aab) bytes)"
+          else
+            echo "⚠ No AAB produced"
+          fi
 
           BUILD_TOOLS=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -n1)
           APKSIGNER="${BUILD_TOOLS}apksigner"
-          if [ -x "$APKSIGNER" ]; then
-            echo "▶ Verifying APK signature with $APKSIGNER"
-            "$APKSIGNER" verify --verbose "$OUT"
-          else
-            echo "⚠ apksigner not found at $APKSIGNER — falling back to jarsigner"
-            jarsigner -verify -verbose "$OUT" | tail -n 5
-          fi
-          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+          echo "▶ apksigner verify"
+          "$APKSIGNER" verify --verbose --print-certs artifacts/TempoKey.apk
 
       - name: Upload TempoKey.apk
         uses: actions/upload-artifact@v4
         with:
-          name: TempoKey-v${{ env.VERSION_NAME }}-build${{ env.VERSION_CODE }}
+          name: TempoKey-APK-v${{ env.VERSION_NAME }}-build${{ env.VERSION_CODE }}
           path: artifacts/TempoKey.apk
           if-no-files-found: error
+
+      - name: Upload TempoKey.aab
+        uses: actions/upload-artifact@v4
+        with:
+          name: TempoKey-AAB-v${{ env.VERSION_NAME }}-build${{ env.VERSION_CODE }}
+          path: artifacts/TempoKey.aab
+          if-no-files-found: warn
