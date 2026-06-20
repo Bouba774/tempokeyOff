@@ -90,7 +90,7 @@ export function TrackDetailSheet({
         </div>
 
         {track.suspect && (
-          <div className="mb-3 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+          <div className="mb-3 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-200">
             <AlertTriangle className="h-3.5 w-3.5" />
             Analyse à vérifier — résultat possiblement ambigu.
           </div>
