@@ -97,4 +97,44 @@ npx @capacitor/assets generate --android \
 echo "▶ Syncing Capacitor…"
 npx cap sync android
 
+# ──────────────────────────────────────────────────────────────────────────
+# Inject TempoKey's audio-file permissions into AndroidManifest.xml.
+# Capacitor's default manifest only declares INTERNET, which makes Android
+# App Info show "No permissions requested". We add the minimal set required
+# for analysing the user's local music library:
+#   • READ_MEDIA_AUDIO       – Android 13+ (API 33+) scoped media access
+#   • READ_EXTERNAL_STORAGE  – Android 10–12 fallback (maxSdkVersion=32)
+# No camera, location, contacts or other permissions are declared.
+# ──────────────────────────────────────────────────────────────────────────
+MANIFEST="android/app/src/main/AndroidManifest.xml"
+if [ -f "$MANIFEST" ]; then
+  echo "▶ Patching AndroidManifest.xml with audio permissions…"
+  node <<'NODE'
+const fs = require("fs");
+const path = "android/app/src/main/AndroidManifest.xml";
+let xml = fs.readFileSync(path, "utf8");
+
+const perms = [
+  '<uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />',
+  '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />',
+];
+
+let changed = false;
+for (const line of perms) {
+  const attr = line.match(/android:name="([^"]+)"/)[1];
+  if (!xml.includes(`android:name="${attr}"`)) {
+    xml = xml.replace(/<\/manifest>/, `    ${line}\n</manifest>`);
+    changed = true;
+  }
+}
+
+if (changed) {
+  fs.writeFileSync(path, xml);
+  console.log("  ✓ AndroidManifest.xml updated");
+} else {
+  console.log("  ✓ AndroidManifest.xml already up to date");
+}
+NODE
+fi
+
 echo "✅ Android project prepared at ./android (webDir=$WEB_DIR)"

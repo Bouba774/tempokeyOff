@@ -29,6 +29,16 @@ import {
   Sparkles,
 } from "lucide-react";
 import logoAsset from "@/assets/tempokey-logo.png.asset.json";
+import {
+  AudioPermissionDialog,
+  type AudioPermissionDialogVariant,
+} from "@/components/AudioPermissionDialog";
+import {
+  hasPersistedGrant,
+  isNativeAndroid,
+  openAndroidAppSettings,
+  requestAudioPermission,
+} from "@/lib/android-permissions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -82,13 +92,49 @@ function Home() {
   const startAnalysis = useAnalysisStore((s) => s.start);
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const [permDialog, setPermDialog] = useState<{
+    open: boolean;
+    variant: AudioPermissionDialogVariant;
+  }>({ open: false, variant: "request" });
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
 
   function pickFolder() {
-    inputRef.current?.click();
+    void ensurePermissionThenPick();
+  }
+
+  async function ensurePermissionThenPick() {
+    if (!(await isNativeAndroid()) || hasPersistedGrant()) {
+      inputRef.current?.click();
+      return;
+    }
+    setPermDialog({ open: true, variant: "request" });
+  }
+
+  async function handlePermissionConfirm() {
+    const status = await requestAudioPermission();
+    if (status === "granted") {
+      setPermDialog({ open: false, variant: "request" });
+      inputRef.current?.click();
+      return;
+    }
+    if (status === "blocked") {
+      setPermDialog({ open: true, variant: "blocked" });
+      return;
+    }
+    setPermDialog({ open: true, variant: "denied" });
+  }
+
+  async function handleOpenSettings() {
+    const ok = await openAndroidAppSettings();
+    if (!ok) {
+      toast.info("Ouvrez les paramètres Android", {
+        description: "Réglages → Applications → TempoKey → Autorisations.",
+      });
+    }
+    setPermDialog({ open: false, variant: "request" });
   }
 
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
@@ -137,6 +183,13 @@ function Home() {
 
   return (
     <main className="min-h-[100dvh] bg-background">
+      <AudioPermissionDialog
+        open={permDialog.open}
+        variant={permDialog.variant}
+        onCancel={() => setPermDialog({ open: false, variant: "request" })}
+        onConfirm={handlePermissionConfirm}
+        onOpenSettings={handleOpenSettings}
+      />
       <input
         ref={inputRef}
         type="file"
