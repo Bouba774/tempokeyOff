@@ -53,16 +53,55 @@ void initAndroidBack();
     // The WebView is already overlaying the system bars (capacitor.config.ts).
     // We just need to push the icon style (light/dark) when the theme flips.
     const sb = await import("@capacitor/status-bar").catch(() => null);
+    // Navigation bar (3-button / gesture handle) — optional community plugin.
+    // Bundled via scripts/prepare-android.sh; absent on web → safe no-op.
+    const nb = await import("@capacitor-community/navigation-bar").catch(
+      () => null,
+    );
     if (sb?.StatusBar && cap?.Capacitor?.isNativePlatform()) {
+      // Capacitor StatusBar.Style mapping (IMPORTANT — easy to invert):
+      //   Style.Light = light CONTENT (white icons) → use on DARK backgrounds
+      //   Style.Dark  = dark CONTENT (black icons)  → use on LIGHT backgrounds
+      //   Style.Default = follow system
       const apply = () => {
         const isDark = document.documentElement.classList.contains("dark");
-        // Style.Dark = dark UI bars => icônes claires (pour fond sombre)
-        // Style.Light = light UI bars => icônes sombres (pour fond clair)
+
+        // Keep WebView overlaying system bars (edge-to-edge).
         sb.StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
+
+        // Push the correct icon contrast for the active theme.
         sb.StatusBar.setStyle({
-          style: isDark ? sb.Style.Dark : sb.Style.Light,
+          style: isDark ? sb.Style.Light : sb.Style.Dark,
         }).catch(() => {});
+
+        // Fully transparent — the app background paints under the status bar.
         sb.StatusBar.setBackgroundColor({ color: "#00000000" }).catch(() => {});
+
+        // Mirror the active background into <meta name="theme-color"> so the
+        // recents thumbnail + any non-overlay surface picks up the right tint
+        // (Android 12+ uses it when the WebView is briefly opaque).
+        const bg = getComputedStyle(document.documentElement)
+          .getPropertyValue("--background")
+          .trim();
+        const hex = isDark ? "#0A0D14" : "#FFFFFF";
+        let meta = document.querySelector<HTMLMetaElement>(
+          'meta[name="theme-color"]',
+        );
+        if (!meta) {
+          meta = document.createElement("meta");
+          meta.name = "theme-color";
+          document.head.appendChild(meta);
+        }
+        meta.content = bg ? `oklch(${bg})` : hex;
+
+        // Navigation bar sync — solid color matched to the app background,
+        // with the inverse button style for max contrast on 3-button nav.
+        if (nb?.NavigationBar) {
+          nb.NavigationBar.setColor({
+            color: isDark ? "#0A0D14" : "#FFFFFF",
+            darkButtons: !isDark,
+          }).catch(() => {});
+        }
       };
       apply();
       // Re-sync on theme toggle (classList mutations on <html>)
