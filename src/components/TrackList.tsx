@@ -23,6 +23,7 @@ import { CamelotBadge } from "./viz/CamelotBadge";
 import { EnergyMeter } from "./viz/EnergyMeter";
 import { CompatibilityBadge } from "./viz/CompatibilityBadge";
 import { EmptyState } from "./ui/empty-state";
+import { useBackHandler } from "@/hooks/useBackHandler";
 import { NowPlayingBars } from "./ui/now-playing-bars";
 import { Music2, SearchX } from "lucide-react";
 import {
@@ -221,6 +222,19 @@ export function TrackList() {
   const [reorderMode, setReorderMode] = useState(false);
   const [detailId, setDetailId] = useState<string | null>(null);
   const parentRef = useRef<HTMLDivElement>(null);
+
+  // Android back-button integration:
+  //  - a non-empty selection is cleared first (innermost handler, LIFO top),
+  //  - then an active search query is cleared,
+  //  - then Radix overlays / history / exit toast take over (android-back.ts).
+  useBackHandler(selectedIds.size > 0, () => {
+    clear();
+    return true;
+  });
+  useBackHandler(query.length > 0, () => {
+    setQuery("");
+    return true;
+  });
 
   const filtered = useMemo(
     () => applyFiltersOnly(ordered, query, filters),
