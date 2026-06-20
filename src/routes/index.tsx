@@ -39,6 +39,12 @@ import {
   openAndroidAppSettings,
   requestAudioPermission,
 } from "@/lib/android-permissions";
+import {
+  filesFromDirectoryHandle,
+  isFsAccessSupported,
+  pickDirectoryHandle,
+  saveDirectoryHandle,
+} from "@/lib/rename/dir-handle";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -107,7 +113,7 @@ function Home() {
 
   async function ensurePermissionThenPick() {
     if (!(await isNativeAndroid()) || hasPersistedGrant()) {
-      inputRef.current?.click();
+      await openFolderPicker();
       return;
     }
     setPermDialog({ open: true, variant: "request" });
@@ -117,7 +123,7 @@ function Home() {
     const status = await requestAudioPermission();
     if (status === "granted") {
       setPermDialog({ open: false, variant: "request" });
-      inputRef.current?.click();
+      await openFolderPicker();
       return;
     }
     if (status === "blocked") {
@@ -125,6 +131,54 @@ function Home() {
       return;
     }
     setPermDialog({ open: true, variant: "denied" });
+  }
+
+  // Single entry point: prefers File System Access (one prompt, persistent
+  // handle so renaming works without a second authorization), falls back to
+  // the legacy <input webkitdirectory> picker on platforms that lack it.
+  async function openFolderPicker() {
+    if (isFsAccessSupported()) {
+      const handle = await pickDirectoryHandle();
+      if (!handle) return;
+      setProgress({ phase: "scan", scanned: 0, total: 0 });
+      try {
+        const files = await filesFromDirectoryHandle(handle, (n) =>
+          setProgress({ phase: "scan", scanned: n, total: n }),
+        );
+        const { library: lib, files: fileEntries } = await buildLibraryFromFiles(
+          files,
+          (p) => setProgress(p),
+        );
+        if (lib.tracks.length === 0) {
+          setProgress(null);
+          toast.error("Aucun fichier audio compatible", {
+            description: "Formats acceptés : mp3, wav, flac, aac.",
+          });
+          return;
+        }
+        resetAnalysis();
+        await setLibrary(lib);
+        await saveDirectoryHandle(lib.id, handle);
+        setFiles(fileEntries);
+        setProgress({ phase: "done", scanned: lib.tracks.length, total: lib.tracks.length });
+        toast.success(`${lib.tracks.length.toLocaleString()} morceaux importés`, {
+          description: lib.name,
+        });
+        setTimeout(() => {
+          setProgress(null);
+          navigate({ to: "/workspace" });
+          void startAnalysis();
+        }, 400);
+      } catch (err) {
+        console.error(err);
+        setProgress(null);
+        toast.error("Import impossible", {
+          description: "Vérifie que le dossier est accessible et réessaie.",
+        });
+      }
+      return;
+    }
+    inputRef.current?.click();
   }
 
   async function handleOpenSettings() {
