@@ -30,21 +30,15 @@ import {
 } from "lucide-react";
 import logoAsset from "@/assets/tempokey-logo.png.asset.json";
 import {
-  AudioPermissionDialog,
-  type AudioPermissionDialogVariant,
-} from "@/components/AudioPermissionDialog";
-import {
-  hasPersistedGrant,
-  isNativeAndroid,
-  openAndroidAppSettings,
-  requestAudioPermission,
-} from "@/lib/android-permissions";
-import {
   filesFromDirectoryHandle,
   isFsAccessSupported,
   pickDirectoryHandle,
   saveDirectoryHandle,
 } from "@/lib/rename/dir-handle";
+import {
+  isCapacitorAndroid,
+  pickAndroidFolder,
+} from "@/lib/native/folder-picker";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -98,45 +92,30 @@ function Home() {
   const startAnalysis = useAnalysisStore((s) => s.start);
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<ImportProgress | null>(null);
-  const [permDialog, setPermDialog] = useState<{
-    open: boolean;
-    variant: AudioPermissionDialogVariant;
-  }>({ open: false, variant: "request" });
 
   useEffect(() => {
     void hydrate();
   }, [hydrate]);
 
   function pickFolder() {
-    void ensurePermissionThenPick();
+    void openFolderPicker();
   }
 
-  async function ensurePermissionThenPick() {
-    if (!(await isNativeAndroid()) || hasPersistedGrant()) {
-      await openFolderPicker();
-      return;
-    }
-    setPermDialog({ open: true, variant: "request" });
-  }
-
-  async function handlePermissionConfirm() {
-    const status = await requestAudioPermission();
-    if (status === "granted") {
-      setPermDialog({ open: false, variant: "request" });
-      await openFolderPicker();
-      return;
-    }
-    if (status === "blocked") {
-      setPermDialog({ open: true, variant: "blocked" });
-      return;
-    }
-    setPermDialog({ open: true, variant: "denied" });
-  }
-
-  // Single entry point: prefers File System Access (one prompt, persistent
-  // handle so renaming works without a second authorization), falls back to
-  // the legacy <input webkitdirectory> picker on platforms that lack it.
+  // Platform-routed folder picker:
+  //  - Native Android (Capacitor)  → ACTION_OPEN_DOCUMENT_TREE via custom plugin
+  //  - Desktop / mobile web        → File System Access API
+  //  - Older browsers              → legacy <input webkitdirectory> fallback
   async function openFolderPicker() {
+    if (isCapacitorAndroid()) {
+      setProgress({ phase: "scan", scanned: 0, total: 0 });
+      const result = await pickAndroidFolder();
+      if (!result) {
+        setProgress(null);
+        return;
+      }
+      await importFiles(result.files);
+      return;
+    }
     if (isFsAccessSupported()) {
       const handle = await pickDirectoryHandle();
       if (!handle) return;
@@ -181,20 +160,14 @@ function Home() {
     inputRef.current?.click();
   }
 
-  async function handleOpenSettings() {
-    const ok = await openAndroidAppSettings();
-    if (!ok) {
-      toast.info("Ouvrez les paramètres Android", {
-        description: "Réglages → Applications → TempoKey → Autorisations.",
-      });
-    }
-    setPermDialog({ open: false, variant: "request" });
-  }
-
   async function handleFiles(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files ? Array.from(e.target.files) : [];
     e.target.value = "";
     if (files.length === 0) return;
+    await importFiles(files);
+  }
+
+  async function importFiles(files: File[]) {
     setProgress({ phase: "scan", scanned: 0, total: files.length });
     try {
       const { library: lib, files: fileEntries } = await buildLibraryFromFiles(
@@ -237,13 +210,6 @@ function Home() {
 
   return (
     <main className="min-h-[100dvh] bg-background">
-      <AudioPermissionDialog
-        open={permDialog.open}
-        variant={permDialog.variant}
-        onCancel={() => setPermDialog({ open: false, variant: "request" })}
-        onConfirm={handlePermissionConfirm}
-        onOpenSettings={handleOpenSettings}
-      />
       <input
         ref={inputRef}
         type="file"
