@@ -25,8 +25,7 @@ npm install --no-audit --no-fund --save \
   @capacitor/status-bar@^6 \
   @capacitor/app@^6 \
   @capacitor/keyboard@^6 \
-  @capacitor/filesystem@^6 \
-  @capacitor-community/navigation-bar@^1 >/dev/null
+  @capacitor/filesystem@^6 >/dev/null
 
 echo "▶ Building static SPA for WebView (vite.config.capacitor.ts)…"
 rm -rf "$WEB_DIR"

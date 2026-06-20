@@ -53,11 +53,6 @@ void initAndroidBack();
     // The WebView is already overlaying the system bars (capacitor.config.ts).
     // We just need to push the icon style (light/dark) when the theme flips.
     const sb = await import("@capacitor/status-bar").catch(() => null);
-    // Navigation bar (3-button / gesture handle) — optional community plugin.
-    // Bundled via scripts/prepare-android.sh; absent on web → safe no-op.
-    const nb = await import("@capacitor-community/navigation-bar").catch(
-      () => null,
-    );
     if (sb?.StatusBar && cap?.Capacitor?.isNativePlatform()) {
       // Capacitor StatusBar.Style mapping (IMPORTANT — easy to invert):
       //   Style.Light = light CONTENT (white icons) → use on DARK backgrounds
@@ -90,15 +85,6 @@ void initAndroidBack();
           document.head.appendChild(meta);
         }
         meta.content = hex;
-
-        // Navigation bar sync — solid color matched to the app background,
-        // with the inverse button style for max contrast on 3-button nav.
-        if (nb?.NavigationBar) {
-          nb.NavigationBar.setColor({
-            color: isDark ? "#0A0D14" : "#FFFFFF",
-            darkButtons: !isDark,
-          }).catch(() => {});
-        }
       };
       apply();
       // Re-sync on theme toggle (classList mutations on <html>)
