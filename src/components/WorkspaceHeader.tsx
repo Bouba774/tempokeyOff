@@ -7,7 +7,7 @@ export function WorkspaceHeader() {
     <header className="sticky top-0 z-30 border-b border-border bg-[var(--surface)] shadow-[0_1px_0_0_color-mix(in_oklab,var(--primary)_8%,transparent)]">
       <div className="flex items-center gap-2 px-4 py-3">
         <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="Accueil">
-          <img src={logoAsset.url} alt="" className="h-8 w-8" />
+          <img src={logoAsset.url} alt="TempoKey" className="h-8 w-8 object-contain" />
           <span className="font-display text-[15px] font-semibold tracking-tight">TempoKey</span>
         </Link>
         <div className="flex-1" />
