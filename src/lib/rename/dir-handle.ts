@@ -32,6 +32,48 @@ export async function pickDirectoryHandle(): Promise<DirHandle | null> {
   }
 }
 
+/**
+ * Recursively walk a FileSystemDirectoryHandle and return all contained files
+ * as a flat `File[]` where each file carries a `webkitRelativePath` matching
+ * `<rootName>/<sub>/<file>` so downstream code can derive the library name
+ * exactly like the `<input webkitdirectory>` path.
+ */
+export async function filesFromDirectoryHandle(
+  root: DirHandle,
+  onProgress?: (count: number) => void,
+): Promise<File[]> {
+  const out: File[] = [];
+  async function walk(dir: DirHandle, prefix: string) {
+    // @ts-expect-error async iterator on FileSystemDirectoryHandle
+    for await (const [name, entry] of dir.entries()) {
+      const rel = prefix ? `${prefix}/${name}` : name;
+      if (entry.kind === "file") {
+        try {
+          const f = await (entry as FileSystemFileHandle).getFile();
+          // Patch webkitRelativePath so existing import code works unchanged.
+          try {
+            Object.defineProperty(f, "webkitRelativePath", {
+              value: rel,
+              configurable: true,
+            });
+          } catch {
+            /* ignore */
+          }
+          out.push(f);
+          if (out.length % 50 === 0) onProgress?.(out.length);
+        } catch {
+          /* skip unreadable files */
+        }
+      } else if (entry.kind === "directory") {
+        await walk(entry as DirHandle, rel);
+      }
+    }
+  }
+  await walk(root, root.name);
+  onProgress?.(out.length);
+  return out;
+}
+
 export async function saveDirectoryHandle(libraryId: string, handle: DirHandle): Promise<void> {
   try {
     await idbSet(KEY(libraryId), handle, store);
