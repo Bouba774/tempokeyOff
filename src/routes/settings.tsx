@@ -22,6 +22,7 @@ import {
   Check,
   Heart,
 } from "lucide-react";
+import { Copy, User } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useThemeStore } from "@/lib/theme-store";
@@ -372,20 +373,13 @@ function SettingsPage() {
                 </div>
               </div>
             </div>
-            <div className="px-5 pb-4 grid gap-2 text-sm">
-              <Field label="Créé par" value="DJ LAMBO Premier" />
-              <Field
-                label="Contact"
-                value={
-                  <a
-                    href="mailto:djlambopremierofficiel@gmail.com"
-                    className="inline-flex items-center gap-1.5 text-primary hover:underline"
-                  >
-                    <Mail className="h-3.5 w-3.5" />
-                    djlambopremierofficiel@gmail.com
-                  </a>
-                }
+            <div className="border-t border-border/60">
+              <MetaRow
+                icon={<User className="h-4 w-4" />}
+                label="Créé par"
+                value="DJ LAMBO Premier"
               />
+              <ContactRow email="djlambopremierofficiel@gmail.com" />
             </div>
           </Card>
           <Card>
@@ -507,6 +501,87 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
     <div className="flex items-center justify-between gap-3">
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-sm font-medium text-right">{value}</span>
+    </div>
+  );
+}
+
+/**
+ * Two-line meta row used in the "À propos" card.
+ * Label sits tight above the value (no justify-between gap), so the value
+ * stays visually anchored to its label — critical when the value is a long
+ * email address that must remain fully visible on narrow phones.
+ */
+function MetaRow({
+  icon,
+  label,
+  value,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3 px-5 py-3.5 border-b border-border/60 last:border-b-0">
+      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--surface-elevated)] text-muted-foreground">
+        {icon}
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="text-[11px] uppercase tracking-[0.1em] font-semibold text-muted-foreground">
+          {label}
+        </div>
+        <div className="mt-0.5 text-sm font-medium text-foreground break-all">
+          {value}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ContactRow({ email }: { email: string }) {
+  async function copy() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(email);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = email;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      toast.success("Adresse copiée", { description: email });
+    } catch {
+      toast.error("Impossible de copier l'adresse");
+    }
+  }
+
+  return (
+    <div className="flex items-start gap-3 px-5 py-3.5">
+      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--surface-elevated)] text-muted-foreground">
+        <Mail className="h-4 w-4" />
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="text-[11px] uppercase tracking-[0.1em] font-semibold text-muted-foreground">
+          Contact
+        </div>
+        <a
+          href={`mailto:${email}`}
+          className="mt-0.5 block text-sm font-medium text-primary hover:underline break-all"
+        >
+          {email}
+        </a>
+      </div>
+      <button
+        type="button"
+        onClick={copy}
+        aria-label="Copier l'adresse e-mail"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-accent/40 hover:text-foreground transition-colors press"
+      >
+        <Copy className="h-4 w-4" />
+      </button>
     </div>
   );
 }
