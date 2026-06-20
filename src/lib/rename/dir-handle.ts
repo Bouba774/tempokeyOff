@@ -44,8 +44,10 @@ export async function filesFromDirectoryHandle(
 ): Promise<File[]> {
   const out: File[] = [];
   async function walk(dir: DirHandle, prefix: string) {
-    // @ts-expect-error async iterator on FileSystemDirectoryHandle
-    for await (const [name, entry] of dir.entries()) {
+    const iter = (dir as unknown as {
+      entries: () => AsyncIterable<[string, FileSystemHandle]>;
+    }).entries();
+    for await (const [name, entry] of iter) {
       const rel = prefix ? `${prefix}/${name}` : name;
       if (entry.kind === "file") {
         try {
