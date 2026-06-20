@@ -70,7 +70,9 @@ async function defaultBack(canGoBack: boolean): Promise<void> {
   // 3) Root → double-press to exit.
   const now = Date.now();
   if (now - lastExitPromptAt < 2000) {
-    const cap = await import("@capacitor/app").catch(() => null);
+    const cap: any = await import(
+      /* @vite-ignore */ "@capacitor/app"
+    ).catch(() => null);
     cap?.App?.exitApp?.().catch?.(() => {});
     return;
   }
@@ -82,11 +84,17 @@ export async function initAndroidBack(): Promise<void> {
   if (initialised) return;
   initialised = true;
 
-  const core = await import("@capacitor/core").catch(() => null);
+  const core: any = await import(
+    /* @vite-ignore */ "@capacitor/core"
+  ).catch(() => null);
   if (!core?.Capacitor?.isNativePlatform?.()) return;
 
-  const appMod = await import("@capacitor/app").catch(() => null);
-  const kbMod = await import("@capacitor/keyboard").catch(() => null);
+  const appMod: any = await import(
+    /* @vite-ignore */ "@capacitor/app"
+  ).catch(() => null);
+  const kbMod: any = await import(
+    /* @vite-ignore */ "@capacitor/keyboard"
+  ).catch(() => null);
 
   // Track keyboard visibility — first back press should dismiss the keyboard.
   let keyboardVisible = false;
@@ -97,7 +105,7 @@ export async function initAndroidBack(): Promise<void> {
     keyboardVisible = false;
   }).catch?.(() => {});
 
-  appMod?.App?.addListener?.("backButton", async ({ canGoBack }) => {
+  appMod?.App?.addListener?.("backButton", async ({ canGoBack }: { canGoBack: boolean }) => {
     try {
       // a) Keyboard first.
       if (keyboardVisible && kbMod?.Keyboard?.hide) {
