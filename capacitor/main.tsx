@@ -78,11 +78,8 @@ void initAndroidBack();
         sb.StatusBar.setBackgroundColor({ color: "#00000000" }).catch(() => {});
 
         // Mirror the active background into <meta name="theme-color"> so the
-        // recents thumbnail + any non-overlay surface picks up the right tint
-        // (Android 12+ uses it when the WebView is briefly opaque).
-        const bg = getComputedStyle(document.documentElement)
-          .getPropertyValue("--background")
-          .trim();
+        // recents thumbnail picks up the right tint when the WebView is
+        // briefly opaque (Android 12+).
         const hex = isDark ? "#0A0D14" : "#FFFFFF";
         let meta = document.querySelector<HTMLMetaElement>(
           'meta[name="theme-color"]',
@@ -92,7 +89,7 @@ void initAndroidBack();
           meta.name = "theme-color";
           document.head.appendChild(meta);
         }
-        meta.content = bg ? `oklch(${bg})` : hex;
+        meta.content = hex;
 
         // Navigation bar sync — solid color matched to the app background,
         // with the inverse button style for max contrast on 3-button nav.
