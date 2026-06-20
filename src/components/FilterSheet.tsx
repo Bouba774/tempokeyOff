@@ -171,7 +171,7 @@ export function FilterSheet({ open, onClose, filters, onChange }: Props) {
           </section>
         </div>
 
-        <div className="sticky bottom-0 border-t border-border bg-[var(--surface)] px-4 py-3">
+        <div className="sticky bottom-0 border-t border-border bg-[var(--surface)] px-4 py-3 safe-pb safe-px">
           <button
             onClick={onClose}
             className="h-11 w-full rounded-xl text-sm font-semibold text-[var(--primary-foreground)]"

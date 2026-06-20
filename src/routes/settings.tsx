@@ -102,7 +102,7 @@ function SettingsPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background">
-      <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-card/90 backdrop-blur-md px-2 py-2.5">
+      <header className="sticky top-0 z-30 flex items-center gap-2 border-b border-border bg-card/90 backdrop-blur-md px-2 py-2.5 safe-pt safe-px">
         <Link
           to="/workspace"
           aria-label="Retour"

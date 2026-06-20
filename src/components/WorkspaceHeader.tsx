@@ -4,9 +4,10 @@ import logoAsset from "@/assets/tempokey-logo.png.asset.json";
 
 export function WorkspaceHeader() {
   return (
-    <header className="sticky top-0 z-30 border-b border-border bg-[var(--surface)] shadow-[0_1px_0_0_color-mix(in_oklab,var(--primary)_8%,transparent)]">
+    <header className="sticky top-0 z-30 border-b border-border bg-[var(--surface)]/95 backdrop-blur-md safe-pt safe-px shadow-[0_1px_0_0_color-mix(in_oklab,var(--primary)_8%,transparent)]">
       <div className="flex items-center gap-2 px-4 py-3">
-        <Link to="/" className="flex items-center gap-2 shrink-0" aria-label="Accueil">
+        <Link to="/" className="flex min-w-0 items-center gap-2 shrink-0" aria-label="Accueil">
+
           <img src={logoAsset.url} alt="TempoKey" className="h-8 w-8 object-contain" />
           <span className="font-display text-[15px] font-semibold tracking-tight">TempoKey</span>
         </Link>

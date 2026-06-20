@@ -29,7 +29,9 @@ const log = (stage: string, extra?: unknown) => {
 
 log("App Started");
 
-// Optional Capacitor diagnostics (won't crash if package missing in web dev)
+// Optional Capacitor diagnostics + edge-to-edge wiring.
+// All imports stay dynamic so the SPA bundle compiles even if a package is
+// absent during web preview ; failures are swallowed.
 (async () => {
   try {
     const cap = await import("@capacitor/core").catch(() => null);
@@ -39,10 +41,40 @@ log("App Started");
         platform: cap.Capacitor.getPlatform(),
       });
     }
+
+    // ── Edge-to-edge status & navigation bar sync with the active theme ──
+    // The WebView is already overlaying the system bars (capacitor.config.ts).
+    // We just need to push the icon style (light/dark) when the theme flips.
+    const sb = await import("@capacitor/status-bar").catch(() => null);
+    if (sb?.StatusBar && cap?.Capacitor?.isNativePlatform()) {
+      const apply = () => {
+        const isDark = document.documentElement.classList.contains("dark");
+        // Style.Dark = dark UI bars => icônes claires (pour fond sombre)
+        // Style.Light = light UI bars => icônes sombres (pour fond clair)
+        sb.StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
+        sb.StatusBar.setStyle({
+          style: isDark ? sb.Style.Dark : sb.Style.Light,
+        }).catch(() => {});
+        sb.StatusBar.setBackgroundColor({ color: "#00000000" }).catch(() => {});
+      };
+      apply();
+      // Re-sync on theme toggle (classList mutations on <html>)
+      const obs = new MutationObserver(apply);
+      obs.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+      // Re-sync when app comes back from background
+      const appMod = await import("@capacitor/app").catch(() => null);
+      appMod?.App?.addListener?.("appStateChange", ({ isActive }) => {
+        if (isActive) apply();
+      }).catch(() => {});
+    }
   } catch (e) {
     log("Capacitor Probe Skipped", String(e));
   }
 })();
+
 
 function boot() {
   try {

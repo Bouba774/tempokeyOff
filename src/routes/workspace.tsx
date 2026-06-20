@@ -56,7 +56,7 @@ function Workspace() {
     <div className="flex min-h-[100dvh] flex-col bg-background">
       <WorkspaceHeader />
       <LibraryContextCard />
-      <div role="tablist" className="sticky top-[65px] z-20 mt-4 flex gap-1 overflow-x-auto border-b border-border bg-background px-4">
+      <div role="tablist" className="sticky z-20 mt-4 flex gap-1 overflow-x-auto border-b border-border bg-background px-4" style={{ top: "calc(env(safe-area-inset-top, 0px) + 65px)" }}>
 
         {([
           { id: "library", label: "Bibliothèque" },

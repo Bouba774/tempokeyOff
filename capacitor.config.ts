@@ -18,6 +18,10 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     captureInput: true,
     webContentsDebuggingEnabled: false,
+    // Edge-to-edge moderne (Android 15+ obligatoire) : la WebView s'étend
+    // sous les barres système ; nous gérons les safe areas en CSS via
+    // env(safe-area-inset-*).
+    adjustMarginsForEdgeToEdge: "force",
   },
   plugins: {
     SplashScreen: {
@@ -29,6 +33,14 @@ const config: CapacitorConfig = {
       showSpinner: false,
       splashFullScreen: true,
       splashImmersive: true,
+    },
+    StatusBar: {
+      // Couche transparente — la WebView dessine derrière la status bar.
+      // Le style (icônes claires/sombres) est piloté depuis main.tsx
+      // en suivant le thème TempoKey (clair/sombre).
+      overlaysWebView: true,
+      style: "DEFAULT",
+      backgroundColor: "#00000000",
     },
   },
 };

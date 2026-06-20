@@ -79,7 +79,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "TempoKey — Analyse et organise tes bibliothèques audio" },
       { name: "description", content: "Outil professionnel pour DJs et producteurs : analysez BPM, tonalité et organisez vos bibliothèques audio." },
       { name: "theme-color", content: "#0A0D14" },
