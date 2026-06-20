@@ -2,12 +2,12 @@
   "$schema": "https://capacitorjs.com/schema/assets.json",
   "android": {
     "icon": {
-      "background": "#0A0D14",
-      "foreground": "logo.png"
+      "background": "#FFFFFF",
+      "foreground": "icon.png"
     },
     "splash": {
-      "background": "#0A0D14",
-      "image": "logo.png"
+      "background": "#FFFFFF",
+      "image": "splash.png"
     }
   }
 }
