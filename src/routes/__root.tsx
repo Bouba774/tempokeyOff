@@ -90,11 +90,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
       { name: "twitter:title", content: "TempoKey — Analyse et organise tes bibliothèques audio" },
       { name: "twitter:description", content: "Outil professionnel pour DJs et producteurs : analysez BPM, tonalité et organisez vos bibliothèques audio." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/11ea2fe2-f750-4207-924d-713a57d9fe69" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/11ea2fe2-f750-4207-924d-713a57d9fe69" },
+      { property: "og:image", content: "https://tempokey.lovable.app/__l5e/assets-v1/8d9af5cd-e723-4411-acf4-24e5008f2204/tempokey-logo.png" },
+      { name: "twitter:image", content: "https://tempokey.lovable.app/__l5e/assets-v1/8d9af5cd-e723-4411-acf4-24e5008f2204/tempokey-logo.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "icon", type: "image/png", href: "/__l5e/assets-v1/8d9af5cd-e723-4411-acf4-24e5008f2204/tempokey-logo.png" },
+      { rel: "apple-touch-icon", href: "/__l5e/assets-v1/8d9af5cd-e723-4411-acf4-24e5008f2204/tempokey-logo.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
