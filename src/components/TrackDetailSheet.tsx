@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   X,
   Lock,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import { useLibraryStore } from "@/lib/library-store";
 import { useAnalysisStore } from "@/lib/analysis-store";
+import { useBackHandler } from "@/hooks/useBackHandler";
 import {
   ALL_CAMELOT,
   confidenceLabel,
@@ -46,7 +48,22 @@ export function TrackDetailSheet({
     setCamelotOpen(false);
   }, [trackId, track?.bpm]);
 
-  if (!trackId || !track) return null;
+  const open = !!trackId && !!track;
+
+  // Safety net: if the parent ever leaves the sheet "open" with no matching
+  // track (deleted/library reload), force a close so the user is never stuck.
+  useEffect(() => {
+    if (trackId && !track) onClose();
+  }, [trackId, track, onClose]);
+
+  // Android hardware back button closes the sheet first (LIFO, highest
+  // priority while the sheet is open) before any other back behavior.
+  useBackHandler(open, () => {
+    onClose();
+    return true;
+  });
+
+  if (!open) return null;
 
   const bpmConf = confidenceLabel(track.bpmConfidence);
   const keyConf = confidenceLabel(track.keyConfidence);
@@ -63,14 +80,23 @@ export function TrackDetailSheet({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm animate-fade-in"
-      onClick={onClose}
+    <DialogPrimitive.Root
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
     >
-      <div
-        className="w-full max-w-2xl rounded-t-3xl border border-border bg-[var(--surface-elevated)] p-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] shadow-2xl animate-slide-in-right"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay
+          className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
+        />
+        <DialogPrimitive.Content
+          aria-describedby={undefined}
+          className="fixed inset-x-0 bottom-0 z-[60] mx-auto w-full max-w-2xl rounded-t-3xl border border-border bg-[var(--surface-elevated)] p-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
+        >
+          <DialogPrimitive.Title className="sr-only">
+            Détails du morceau
+          </DialogPrimitive.Title>
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="truncate text-base font-semibold text-foreground">
@@ -80,13 +106,12 @@ export function TrackDetailSheet({
               {track.fileName}
             </div>
           </div>
-          <button
-            onClick={onClose}
+          <DialogPrimitive.Close
             aria-label="Fermer"
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
           >
             <X className="h-4 w-4" />
-          </button>
+          </DialogPrimitive.Close>
         </div>
 
         {track.suspect && (
@@ -290,7 +315,8 @@ export function TrackDetailSheet({
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Les valeurs verrouillées ne sont jamais remplacées par une nouvelle analyse.
         </p>
-      </div>
-    </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }
