@@ -98,6 +98,295 @@ echo "▶ Syncing Capacitor…"
 npx cap sync android
 
 # ──────────────────────────────────────────────────────────────────────────
+# Install our custom Android folder-picker plugin into the gradle project.
+# Uses ACTION_OPEN_DOCUMENT_TREE + takePersistableUriPermission so users
+# pick a real Android folder through the system picker (no webkitdirectory).
+# ──────────────────────────────────────────────────────────────────────────
+PLUGIN_PKG_DIR="android/app/src/main/java/app/lovable/tempokey/folderpicker"
+if [ -d "android/app" ]; then
+  echo "▶ Installing native FolderPicker plugin…"
+  mkdir -p "$PLUGIN_PKG_DIR"
+  cat > "$PLUGIN_PKG_DIR/FolderPickerPlugin.java" <<'JAVA'
+package app.lovable.tempokey.folderpicker;
+
+import android.app.Activity;
+import android.content.ContentResolver;
+import android.content.Intent;
+import android.content.UriPermission;
+import android.database.Cursor;
+import android.net.Uri;
+import android.provider.DocumentsContract;
+import android.util.Base64;
+import androidx.activity.result.ActivityResult;
+import com.getcapacitor.JSArray;
+import com.getcapacitor.JSObject;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.ActivityCallback;
+import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+
+@CapacitorPlugin(name = "FolderPicker")
+public class FolderPickerPlugin extends Plugin {
+
+    private static final String[] AUDIO_EXT = {
+        ".mp3", ".wav", ".flac", ".aac", ".m4a", ".ogg", ".aiff", ".aif", ".wma", ".opus"
+    };
+
+    @PluginMethod
+    public void pickFolder(PluginCall call) {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(
+            Intent.FLAG_GRANT_READ_URI_PERMISSION
+            | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
+        );
+        startActivityForResult(call, intent, "handlePickResult");
+    }
+
+    @ActivityCallback
+    private void handlePickResult(PluginCall call, ActivityResult result) {
+        if (result.getResultCode() != Activity.RESULT_OK || result.getData() == null) {
+            call.reject("CANCELLED");
+            return;
+        }
+        Uri treeUri = result.getData().getData();
+        if (treeUri == null) {
+            call.reject("NO_URI");
+            return;
+        }
+        int flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                  | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION;
+        try {
+            getContext().getContentResolver().takePersistableUriPermission(treeUri, flags);
+        } catch (Exception ignored) {}
+
+        String name = "";
+        try {
+            Uri docUri = DocumentsContract.buildDocumentUriUsingTree(
+                treeUri, DocumentsContract.getTreeDocumentId(treeUri)
+            );
+            Cursor c = getContext().getContentResolver().query(
+                docUri,
+                new String[] { DocumentsContract.Document.COLUMN_DISPLAY_NAME },
+                null, null, null
+            );
+            if (c != null) {
+                try { if (c.moveToFirst()) name = c.getString(0); }
+                finally { c.close(); }
+            }
+        } catch (Exception ignored) {}
+
+        JSObject ret = new JSObject();
+        ret.put("treeUri", treeUri.toString());
+        ret.put("name", name == null ? "" : name);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void listAudioFiles(PluginCall call) {
+        String treeUriStr = call.getString("treeUri");
+        if (treeUriStr == null) { call.reject("MISSING_TREE_URI"); return; }
+        Uri treeUri = Uri.parse(treeUriStr);
+        ContentResolver cr = getContext().getContentResolver();
+        String rootDocId = DocumentsContract.getTreeDocumentId(treeUri);
+
+        String rootName = "";
+        try {
+            Uri rootUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, rootDocId);
+            Cursor c = cr.query(
+                rootUri,
+                new String[] { DocumentsContract.Document.COLUMN_DISPLAY_NAME },
+                null, null, null
+            );
+            if (c != null) {
+                try { if (c.moveToFirst()) rootName = c.getString(0); }
+                finally { c.close(); }
+            }
+        } catch (Exception ignored) {}
+
+        JSArray files = new JSArray();
+        walk(cr, treeUri, rootDocId, rootName == null ? "" : rootName, files);
+
+        JSObject ret = new JSObject();
+        ret.put("rootName", rootName == null ? "" : rootName);
+        ret.put("files", files);
+        call.resolve(ret);
+    }
+
+    private void walk(
+        ContentResolver cr, Uri treeUri, String parentDocId, String relPrefix, JSArray out
+    ) {
+        Uri children = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, parentDocId);
+        String[] proj = {
+            DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+            DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+            DocumentsContract.Document.COLUMN_MIME_TYPE,
+            DocumentsContract.Document.COLUMN_SIZE
+        };
+        Cursor c = null;
+        try {
+            c = cr.query(children, proj, null, null, null);
+            if (c == null) return;
+            while (c.moveToNext()) {
+                String id = c.getString(0);
+                String name = c.getString(1);
+                String mime = c.getString(2);
+                long size = c.isNull(3) ? 0L : c.getLong(3);
+                if (name == null) continue;
+                String childRel = relPrefix.isEmpty() ? name : (relPrefix + "/" + name);
+                if (DocumentsContract.Document.MIME_TYPE_DIR.equals(mime)) {
+                    walk(cr, treeUri, id, childRel, out);
+                } else {
+                    boolean isAudio = (mime != null && mime.startsWith("audio/"));
+                    if (!isAudio) {
+                        String lower = name.toLowerCase();
+                        for (String ext : AUDIO_EXT) {
+                            if (lower.endsWith(ext)) { isAudio = true; break; }
+                        }
+                    }
+                    if (isAudio) {
+                        Uri docUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, id);
+                        JSObject o = new JSObject();
+                        o.put("uri", docUri.toString());
+                        o.put("name", name);
+                        o.put("relativePath", childRel);
+                        o.put("size", size);
+                        o.put("mime", mime == null ? "" : mime);
+                        out.put(o);
+                    }
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (c != null) try { c.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    @PluginMethod
+    public void readFile(PluginCall call) {
+        String uriStr = call.getString("uri");
+        long offset = call.getLong("offset", 0L);
+        long length = call.getLong("length", -1L);
+        if (uriStr == null) { call.reject("MISSING_URI"); return; }
+        InputStream is = null;
+        try {
+            Uri uri = Uri.parse(uriStr);
+            is = getContext().getContentResolver().openInputStream(uri);
+            if (is == null) { call.reject("OPEN_FAIL"); return; }
+            long skipped = 0;
+            while (skipped < offset) {
+                long s = is.skip(offset - skipped);
+                if (s <= 0) break;
+                skipped += s;
+            }
+            ByteArrayOutputStream buf = new ByteArrayOutputStream();
+            byte[] chunk = new byte[64 * 1024];
+            long remaining = length < 0 ? Long.MAX_VALUE : length;
+            int n;
+            while (remaining > 0) {
+                int toRead = (int) Math.min((long) chunk.length, remaining);
+                n = is.read(chunk, 0, toRead);
+                if (n <= 0) break;
+                buf.write(chunk, 0, n);
+                remaining -= n;
+            }
+            byte[] data = buf.toByteArray();
+            JSObject ret = new JSObject();
+            ret.put("data", Base64.encodeToString(data, Base64.NO_WRAP));
+            call.resolve(ret);
+        } catch (Exception e) {
+            call.reject("READ_FAIL", e);
+        } finally {
+            if (is != null) try { is.close(); } catch (Exception ignored) {}
+        }
+    }
+
+    @PluginMethod
+    public void hasPersistedAccess(PluginCall call) {
+        String treeUriStr = call.getString("treeUri");
+        boolean granted = false;
+        if (treeUriStr != null) {
+            Uri target = Uri.parse(treeUriStr);
+            for (UriPermission p : getContext().getContentResolver().getPersistedUriPermissions()) {
+                if (p.getUri().equals(target) && p.isReadPermission()) {
+                    granted = true;
+                    break;
+                }
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("granted", granted);
+        call.resolve(ret);
+    }
+}
+JAVA
+
+  echo "▶ Registering FolderPicker plugin in MainActivity…"
+  node <<'NODE'
+const fs = require("fs");
+const path = require("path");
+
+function find(dir, name) {
+  if (!fs.existsSync(dir)) return null;
+  for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+    const p = path.join(dir, e.name);
+    if (e.isDirectory()) {
+      const r = find(p, name);
+      if (r) return r;
+    } else if (e.name === name) return p;
+  }
+  return null;
+}
+
+const mainActivity = find("android/app/src/main/java", "MainActivity.java");
+if (!mainActivity) {
+  console.log("  ⚠ MainActivity.java not found, skipping registration");
+  process.exit(0);
+}
+let src = fs.readFileSync(mainActivity, "utf8");
+const importLine =
+  'import app.lovable.tempokey.folderpicker.FolderPickerPlugin;';
+const registerLine =
+  '    registerPlugin(FolderPickerPlugin.class);';
+
+let changed = false;
+if (!src.includes(importLine)) {
+  src = src.replace(
+    /(import com\.getcapacitor\.BridgeActivity;)/,
+    `$1\n${importLine}`,
+  );
+  changed = true;
+}
+
+if (!src.includes("registerPlugin(FolderPickerPlugin.class)")) {
+  // In Capacitor, custom plugins must be registered BEFORE super.onCreate().
+  if (/super\.onCreate\([^)]*\);/.test(src)) {
+    src = src.replace(
+      /(\n[ \t]*)(super\.onCreate\([^)]*\);)/,
+      `$1${registerLine.trim()}\n$1$2`,
+    );
+  } else {
+    // Inject a minimal onCreate override before the closing class brace.
+    src = src.replace(
+      /\}\s*$/,
+      `    @Override\n    public void onCreate(android.os.Bundle savedInstanceState) {\n${registerLine}\n        super.onCreate(savedInstanceState);\n    }\n}\n`,
+    );
+  }
+  changed = true;
+}
+
+if (changed) {
+  fs.writeFileSync(mainActivity, src);
+  console.log("  ✓ MainActivity.java updated:", mainActivity);
+} else {
+  console.log("  ✓ MainActivity.java already registers FolderPicker");
+}
+NODE
+fi
+
+# ──────────────────────────────────────────────────────────────────────────
 # Inject TempoKey's audio-file permissions into AndroidManifest.xml.
 # Capacitor's default manifest only declares INTERNET, which makes Android
 # App Info show "No permissions requested". We add the minimal set required
