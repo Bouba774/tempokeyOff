@@ -36,10 +36,10 @@ export function FloatingPlayer() {
 
   return (
     <div
-      className="fixed inset-x-2 z-50 animate-fade-in"
+      className="android-fixed-layer fixed inset-x-2 z-50"
       style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)" }}
     >
-      <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-[var(--surface-elevated)]/95 p-3 shadow-2xl backdrop-blur-xl">
+      <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-[var(--surface-elevated)]/95 p-3 shadow-2xl">
         <div className="flex items-center gap-3">
           <button
             onClick={toggle}

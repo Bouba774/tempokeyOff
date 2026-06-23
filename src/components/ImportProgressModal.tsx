@@ -16,7 +16,7 @@ export function ImportProgressModal({ progress }: { progress: ImportProgress | n
         : 0;
   const isDone = progress.phase === "done";
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-background/80 backdrop-blur px-6">
+    <div className="android-fixed-layer fixed inset-0 z-50 grid place-items-center bg-background/80 px-6">
       <div
         className="w-full max-w-sm rounded-2xl border border-border p-6 text-center"
         style={{ background: "var(--gradient-surface)", boxShadow: "var(--shadow-elegant)" }}

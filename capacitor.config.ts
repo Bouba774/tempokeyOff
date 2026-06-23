@@ -48,6 +48,13 @@ const config: CapacitorConfig = {
       style: "DEFAULT",
       backgroundColor: "#00000000",
     },
+    Keyboard: {
+      // Android WebView stability: keep input focus on the native resize path.
+      // This avoids fullscreen/edge-to-edge keyboard relayout deadlocks when
+      // the user taps search fields or the custom rename template field.
+      resize: "native",
+      resizeOnFullScreen: true,
+    },
   },
 };
 

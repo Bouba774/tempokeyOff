@@ -79,6 +79,51 @@ function durationBucket(sec: number | null): DurationBucket | null {
   return "long";
 }
 
+export function trackPassesFilters(
+  t: Track,
+  q: ParsedQuery,
+  filters: LibraryFilters,
+): boolean {
+  if (q.bpmExact != null) {
+    if (t.bpm == null || Math.abs(t.bpm - q.bpmExact) > 1) return false;
+  }
+  if (q.bpmRange) {
+    if (t.bpm == null || t.bpm < q.bpmRange[0] || t.bpm > q.bpmRange[1]) {
+      return false;
+    }
+  }
+  if (q.camelot.length > 0) {
+    if (!t.camelot || !q.camelot.includes(t.camelot.toUpperCase())) return false;
+  }
+  if (q.text.length > 0) {
+    const hay = `${t.title} ${t.fileName}`.toLowerCase();
+    if (!q.text.every((w) => hay.includes(w))) return false;
+  }
+
+  if (filters.bpmMin != null && (t.bpm == null || t.bpm < filters.bpmMin)) return false;
+  if (filters.bpmMax != null && (t.bpm == null || t.bpm > filters.bpmMax)) return false;
+  if (filters.camelot.size > 0) {
+    if (!t.camelot || !filters.camelot.has(t.camelot.toUpperCase())) return false;
+  }
+  if (filters.durations.size > 0) {
+    const b = durationBucket(t.durationSec);
+    if (!b || !filters.durations.has(b)) return false;
+  }
+  switch (filters.analysis) {
+    case "analyzed":
+      if (!t.analyzed) return false;
+      break;
+    case "pending":
+      if (t.status !== "pending") return false;
+      break;
+    case "error":
+      if (t.status !== "error") return false;
+      break;
+  }
+
+  return true;
+}
+
 /** Apply search + filters without changing order (order is owned by the ordering store). */
 export function applyFiltersOnly(
   tracks: Track[],
@@ -89,42 +134,7 @@ export function applyFiltersOnly(
   const out: Track[] = [];
 
   for (const t of tracks) {
-    if (q.bpmExact != null) {
-      if (t.bpm == null || Math.abs(t.bpm - q.bpmExact) > 1) continue;
-    }
-    if (q.bpmRange) {
-      if (t.bpm == null || t.bpm < q.bpmRange[0] || t.bpm > q.bpmRange[1]) continue;
-    }
-    if (q.camelot.length > 0) {
-      if (!t.camelot || !q.camelot.includes(t.camelot.toUpperCase())) continue;
-    }
-    if (q.text.length > 0) {
-      const hay = `${t.title} ${t.fileName}`.toLowerCase();
-      if (!q.text.every((w) => hay.includes(w))) continue;
-    }
-
-    if (filters.bpmMin != null && (t.bpm == null || t.bpm < filters.bpmMin)) continue;
-    if (filters.bpmMax != null && (t.bpm == null || t.bpm > filters.bpmMax)) continue;
-    if (filters.camelot.size > 0) {
-      if (!t.camelot || !filters.camelot.has(t.camelot.toUpperCase())) continue;
-    }
-    if (filters.durations.size > 0) {
-      const b = durationBucket(t.durationSec);
-      if (!b || !filters.durations.has(b)) continue;
-    }
-    switch (filters.analysis) {
-      case "analyzed":
-        if (!t.analyzed) continue;
-        break;
-      case "pending":
-        if (t.status !== "pending") continue;
-        break;
-      case "error":
-        if (t.status !== "error") continue;
-        break;
-    }
-
-    out.push(t);
+    if (trackPassesFilters(t, q, filters)) out.push(t);
   }
   return out;
 }
