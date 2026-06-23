@@ -95,8 +95,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/png", href: "/__l5e/assets-v1/8d9af5cd-e723-4411-acf4-24e5008f2204/tempokey-logo.png" },
-      { rel: "apple-touch-icon", href: "/__l5e/assets-v1/8d9af5cd-e723-4411-acf4-24e5008f2204/tempokey-logo.png" },
+      { rel: "icon", type: "image/png", href: "/__l5e/assets-v1/00136921-a419-4bb4-8cf6-ca6ffceafbba/tempokey-logo.png" },
+      { rel: "apple-touch-icon", href: "/__l5e/assets-v1/00136921-a419-4bb4-8cf6-ca6ffceafbba/tempokey-logo.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {

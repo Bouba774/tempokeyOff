@@ -8,7 +8,11 @@ export function WorkspaceHeader() {
       <div className="flex items-center gap-2 px-4 py-3">
         <Link to="/" className="flex min-w-0 items-center gap-2 shrink-0" aria-label="Accueil">
 
-          <img src={logoAsset.url} alt="TempoKey" className="h-8 w-8 object-contain" />
+          <img
+            src={logoAsset.url}
+            alt="TempoKey"
+            className="h-8 w-8 rounded-lg bg-white object-contain p-0.5"
+          />
           <span className="font-display text-[15px] font-semibold tracking-tight">TempoKey</span>
         </Link>
         <div className="flex-1" />
