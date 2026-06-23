@@ -40,7 +40,7 @@ function Workspace() {
     // `inline: "center"` repositionne le rail pour que l'onglet actif soit
     // toujours visible (et centré quand l'espace le permet), même quand on
     // passe d'un onglet de bord à l'autre.
-    el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    el.scrollIntoView({ behavior: "auto", inline: "center", block: "nearest" });
   }, [tab]);
 
   useEffect(() => {
@@ -118,7 +118,7 @@ function Workspace() {
           );
         })}
       </div>
-      <div key={tab} className="flex flex-1 flex-col min-h-0 animate-in fade-in-50 duration-200">
+      <div key={tab} className="flex flex-1 flex-col min-h-0">
         <ErrorBoundary>
           {tab === "library" && <TrackList />}
           {tab === "analysis" && <AnalysisPanel />}

@@ -11,6 +11,7 @@ import {
   DEFAULT_ORDER_LABEL,
   type OrderSource,
 } from "@/lib/ordering-store";
+import { useBackHandler } from "@/hooks/useBackHandler";
 
 interface Props {
   open: boolean;
@@ -47,6 +48,11 @@ export function FilterSheet({ open, onClose, filters, onChange }: Props) {
   const active = useOrderingStore((s) => s.active);
   const setOrder = useOrderingStore((s) => s.setOrder);
 
+  useBackHandler(open, () => {
+    onClose();
+    return true;
+  });
+
   if (!open) return null;
 
   function toggleCamelot(code: string) {
@@ -65,7 +71,7 @@ export function FilterSheet({ open, onClose, filters, onChange }: Props) {
   const activeSource = active?.source ?? "import";
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm">
+    <div className="android-fixed-layer fixed inset-0 z-50 flex flex-col justify-end bg-background/75">
       <button aria-label="Fermer" onClick={onClose} className="flex-1" />
       <div className="rounded-t-2xl border-t border-border bg-[var(--surface)] max-h-[85dvh] overflow-y-auto">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-[var(--surface)] px-4 py-3">

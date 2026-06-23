@@ -19,6 +19,17 @@ type Step = "select" | "template" | "preview" | "applying" | "done";
 
 const PREVIEW_LIMIT = 200;
 
+function useSettledValue<T>(value: T, delay = 140): T {
+  const [settled, setSettled] = useState(value);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => setSettled(value), delay);
+    return () => window.clearTimeout(handle);
+  }, [value, delay]);
+
+  return settled;
+}
+
 export function RenamePanel() {
   const library = useLibraryStore((s) => s.library);
   const selectedIds = useLibraryStore((s) => s.selectedIds);
@@ -35,6 +46,7 @@ export function RenamePanel() {
   const [history, setHistory] = useState<RenameOperation[]>([]);
   const [undoBusy, setUndoBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const settledCustomFormat = useSettledValue(customFormat);
 
   const fsSupported = isFsAccessSupported();
 
@@ -51,8 +63,8 @@ export function RenamePanel() {
   }, [tracks, selectedIds, scope]);
 
   const preview = useMemo(
-    () => (step === "preview" ? buildPreview(template, customFormat, scopedTracks, { cleanPrefixes }) : null),
-    [step, template, customFormat, scopedTracks, cleanPrefixes],
+    () => (step === "preview" ? buildPreview(template, settledCustomFormat, scopedTracks, { cleanPrefixes }) : null),
+    [step, template, settledCustomFormat, scopedTracks, cleanPrefixes],
   );
 
   async function runApply() {

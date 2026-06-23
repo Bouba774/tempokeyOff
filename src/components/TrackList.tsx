@@ -1,4 +1,4 @@
-import { useDeferredValue, useRef, useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Search,
@@ -33,9 +33,9 @@ import {
 import {
   DEFAULT_FILTERS,
   type LibraryFilters,
-  applyFiltersOnly,
   filtersActiveCount,
 } from "@/lib/library-filters";
+import { useChunkedTrackFilter } from "@/hooks/useChunkedTrackFilter";
 
 function TrackRow({
   track,
@@ -217,7 +217,7 @@ export function TrackList() {
   const setManual = useOrderingStore((s) => s.setManual);
 
   const [query, setQuery] = useState("");
-  const deferredQuery = useDeferredValue(query);
+  const [settledQuery, setSettledQuery] = useState("");
   const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
@@ -234,12 +234,22 @@ export function TrackList() {
   });
   useBackHandler(query.length > 0, () => {
     setQuery("");
+    setSettledQuery("");
     return true;
   });
 
-  const filtered = useMemo(
-    () => applyFiltersOnly(ordered, deferredQuery, filters),
-    [ordered, deferredQuery, filters],
+  // Android WebView can stall if a large library is filtered synchronously on
+  // every key event. Keep the input instant and apply filtering after typing
+  // settles for a short native-app-friendly delay.
+  useEffect(() => {
+    const handle = window.setTimeout(() => setSettledQuery(query), 140);
+    return () => window.clearTimeout(handle);
+  }, [query]);
+
+  const { tracks: filtered, pending: filtering } = useChunkedTrackFilter(
+    ordered,
+    settledQuery,
+    filters,
   );
 
   // When the user has selected a single track, compare every row to it.
@@ -260,7 +270,7 @@ export function TrackList() {
     count: filtered.length,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 72,
-    overscan: 10,
+    overscan: 4,
   });
 
   function moveBy(trackId: string, delta: number) {
@@ -312,6 +322,7 @@ export function TrackList() {
       <div className="flex items-center justify-between gap-2 px-4 pb-1 text-xs text-muted-foreground tabular-nums">
         <span>
           {filtered.length.toLocaleString()} / {ordered.length.toLocaleString()} morceaux
+          {filtering ? " · recherche…" : ""}
         </span>
         <span className="truncate text-[var(--primary-glow)]">
           Ordre actif : {active?.label ?? "Ordre d'import"}

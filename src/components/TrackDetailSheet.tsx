@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   X,
   Lock,
@@ -48,6 +48,20 @@ export function TrackDetailSheet({
   }, [trackId, track?.bpm]);
 
   const open = !!trackId && !!track;
+  const stats = useMemo(
+    () =>
+      track
+        ? [
+            { label: "Durée", value: track.duration ?? "—" },
+            { label: "Format", value: track.extension?.toUpperCase() || "—" },
+            {
+              label: "Analysé",
+              value: track.correctedAt ? "Corrigé" : track.analyzed ? "Oui" : "Non",
+            },
+          ]
+        : [],
+    [track],
+  );
 
   // Safety net: if the parent ever leaves the sheet "open" with no matching
   // track (deleted/library reload), force a close so the user is never stuck.
@@ -79,17 +93,17 @@ export function TrackDetailSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-[60]" role="presentation">
+    <div className="android-fixed-layer fixed inset-0 z-[60]" role="presentation">
       <button
         type="button"
         aria-label="Fermer les détails"
         onClick={onClose}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in-0"
+        className="absolute inset-0 bg-background/75"
       />
       <section
         role="dialog"
         aria-label="Détails du morceau"
-        className="fixed inset-x-0 bottom-0 z-[61] mx-auto w-full max-w-2xl rounded-t-3xl border border-border bg-[var(--surface-elevated)] p-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] shadow-2xl outline-none animate-in slide-in-from-bottom"
+        className="fixed inset-x-0 bottom-0 z-[61] mx-auto max-h-[92dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl border border-border bg-[var(--surface-elevated)] p-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] shadow-2xl outline-none"
       >
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -279,18 +293,7 @@ export function TrackDetailSheet({
 
         {/* Détails */}
         <section className="mt-3 grid grid-cols-3 gap-2 text-center">
-          {[
-            { label: "Durée", value: track.duration ?? "—" },
-            { label: "Format", value: track.extension?.toUpperCase() || "—" },
-            {
-              label: "Analysé",
-              value: track.correctedAt
-                ? "Corrigé"
-                : track.analyzed
-                  ? "Oui"
-                  : "Non",
-            },
-          ].map((s) => (
+          {stats.map((s) => (
             <div key={s.label} className="rounded-lg border border-border bg-card p-2">
               <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
                 {s.label}

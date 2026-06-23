@@ -1,14 +1,5 @@
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Music2, Settings2 } from "lucide-react";
+import { useBackHandler } from "@/hooks/useBackHandler";
 
 export type AudioPermissionDialogVariant = "request" | "denied" | "blocked";
 
@@ -34,6 +25,11 @@ export function AudioPermissionDialog({
   onConfirm,
   onOpenSettings,
 }: Props) {
+  useBackHandler(open, () => {
+    onCancel();
+    return true;
+  });
+
   const isBlocked = variant === "blocked";
   const title =
     variant === "request"
@@ -50,10 +46,24 @@ export function AudioPermissionDialog({
       ? "Réessayer"
       : "Continuer";
 
+  if (!open) return null;
+
   return (
-    <AlertDialog open={open} onOpenChange={(o) => (!o ? onCancel() : null)}>
-      <AlertDialogContent className="max-w-sm rounded-3xl">
-        <AlertDialogHeader>
+    <div className="android-fixed-layer fixed inset-0 z-50 grid place-items-center bg-background/80 px-5" role="presentation">
+      <button
+        type="button"
+        aria-label="Annuler"
+        onClick={onCancel}
+        className="absolute inset-0"
+      />
+      <section
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="audio-permission-title"
+        aria-describedby="audio-permission-description"
+        className="relative z-[51] w-full max-w-sm rounded-3xl border border-border bg-[var(--surface)] p-6 shadow-2xl"
+      >
+        <div className="flex flex-col space-y-2 text-center">
           <div className="mx-auto mb-2 grid h-12 w-12 place-items-center rounded-2xl bg-[var(--surface-elevated)] text-[var(--primary)]">
             {isBlocked ? (
               <Settings2 className="h-6 w-6" />
@@ -61,25 +71,30 @@ export function AudioPermissionDialog({
               <Music2 className="h-6 w-6" />
             )}
           </div>
-          <AlertDialogTitle className="text-center text-lg font-semibold">
+          <h2 id="audio-permission-title" className="text-lg font-semibold">
             {title}
-          </AlertDialogTitle>
-          <AlertDialogDescription className="text-center text-sm leading-relaxed">
+          </h2>
+          <p id="audio-permission-description" className="text-sm leading-relaxed text-muted-foreground">
             {description}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="mt-2 flex-col gap-2 sm:flex-col">
-          <AlertDialogAction
+          </p>
+        </div>
+        <div className="mt-4 flex flex-col gap-2">
+          <button
+            type="button"
             onClick={() => (isBlocked ? onOpenSettings?.() : onConfirm())}
-            className="h-11 w-full rounded-2xl"
+            className="h-11 w-full rounded-2xl bg-[var(--primary)] px-4 text-sm font-semibold text-[var(--primary-foreground)]"
           >
             {confirmLabel}
-          </AlertDialogAction>
-          <AlertDialogCancel onClick={onCancel} className="h-11 w-full rounded-2xl">
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-11 w-full rounded-2xl border border-border bg-[var(--surface-elevated)] px-4 text-sm font-semibold text-foreground"
+          >
             Annuler
-          </AlertDialogCancel>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </button>
+        </div>
+      </section>
+    </div>
   );
 }

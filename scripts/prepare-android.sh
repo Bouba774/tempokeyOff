@@ -426,7 +426,7 @@ fi
 # ──────────────────────────────────────────────────────────────────────────
 MANIFEST="android/app/src/main/AndroidManifest.xml"
 if [ -f "$MANIFEST" ]; then
-  echo "▶ Patching AndroidManifest.xml with audio permissions…"
+  echo "▶ Patching AndroidManifest.xml with audio permissions and WebView input stability…"
   node <<'NODE'
 const fs = require("fs");
 const path = "android/app/src/main/AndroidManifest.xml";
@@ -446,7 +446,22 @@ for (const line of perms) {
   }
 }
 
-if (changed) {
+// Keep the Capacitor WebView on the normal Android keyboard resize path.
+// Without this, fullscreen / edge-to-edge windows can relayout unpredictably
+// when an input opens the IME, which looks like a hard freeze in the APK.
+xml = xml.replace(/<activity\b([^>]*)>/, (match, attrs) => {
+  let next = attrs;
+  const ensureAttr = (name, value) => {
+    const re = new RegExp(`${name}="[^"]*"`);
+    if (re.test(next)) next = next.replace(re, `${name}="${value}"`);
+    else next += `\n            ${name}="${value}"`;
+  };
+  ensureAttr("android:windowSoftInputMode", "adjustResize");
+  ensureAttr("android:hardwareAccelerated", "true");
+  return `<activity${next}>`;
+});
+
+if (changed || xml !== fs.readFileSync(path, "utf8")) {
   fs.writeFileSync(path, xml);
   console.log("  ✓ AndroidManifest.xml updated");
 } else {

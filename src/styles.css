@@ -396,6 +396,73 @@ html.dark, html.light {
   .shimmer::after { animation: none; }
 }
 
+/* ── Android APK WebView stability layer ───────────────────────────────────
+   Android System WebView is more fragile than desktop Chrome with the combo
+   `position: fixed` + `backdrop-filter` + animated transforms + keyboard
+   resize. In the APK only, we keep the same layout but remove the GPU-heavy
+   effects that were freezing taps on detail sheets, search and template inputs. */
+html.native-android,
+html.native-android body,
+html.native-android #app {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+html.native-android body {
+  background-attachment: scroll;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.native-android *,
+html.native-android *::before,
+html.native-android *::after {
+  scroll-behavior: auto !important;
+}
+
+html.native-android input,
+html.native-android textarea,
+html.native-android select,
+html.native-android button {
+  touch-action: manipulation;
+}
+
+html.native-android input,
+html.native-android textarea,
+html.native-android select {
+  font-size: 16px;
+}
+
+html.native-android .backdrop-blur,
+html.native-android .backdrop-blur-sm,
+html.native-android .backdrop-blur-md,
+html.native-android .backdrop-blur-lg,
+html.native-android .backdrop-blur-xl,
+html.native-android .backdrop-blur-2xl,
+html.native-android .backdrop-blur-3xl {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+html.native-android .animate-in,
+html.native-android .animate-out,
+html.native-android .animate-fade-in,
+html.native-android .animate-scale-in,
+html.native-android [class*="fade-in-"],
+html.native-android [class*="fade-out-"],
+html.native-android [class*="slide-in-"],
+html.native-android [class*="slide-out-"],
+html.native-android [class*="zoom-in-"],
+html.native-android [class*="zoom-out-"] {
+  animation: none !important;
+  transition-duration: 1ms !important;
+}
+
+html.native-android .android-fixed-layer {
+  contain: layout paint;
+  isolation: isolate;
+}
+
 /* Équaliseur "now-playing" — barres animées discrètes */
 @keyframes eq-bar {
   0%, 100% { height: 30%; }

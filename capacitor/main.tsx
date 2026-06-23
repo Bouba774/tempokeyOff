@@ -30,6 +30,13 @@ const log = (stage: string, extra?: unknown) => {
 
 log("App Started");
 
+// Mark the native Android WebView early. The global CSS uses this class to
+// disable effects known to deadlock or severely stall Android System WebView
+// during taps/focus (fixed + backdrop-filter + entrance transforms).
+if (typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent)) {
+  document.documentElement.classList.add("native-android");
+}
+
 // Single centralized Android hardware back-button handler (toast-to-exit on
 // root, Escape dispatch for modals/menus, history.back for inner screens,
 // keyboard dismiss). Stack of component handlers is registered via the
