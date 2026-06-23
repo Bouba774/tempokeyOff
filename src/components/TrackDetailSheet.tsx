@@ -91,7 +91,6 @@ export function TrackDetailSheet({
           className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
         />
         <DialogPrimitive.Content
-          aria-describedby={undefined}
           className="fixed inset-x-0 bottom-0 z-[60] mx-auto w-full max-w-2xl rounded-t-3xl border border-border bg-[var(--surface-elevated)] p-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
         >
           <DialogPrimitive.Title className="sr-only">
