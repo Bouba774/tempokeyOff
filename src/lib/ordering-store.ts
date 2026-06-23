@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 import { get as idbGet, set as idbSet } from "idb-keyval";
 import type { Track } from "./library-store";
@@ -233,6 +234,8 @@ export const useOrderingStore = create<OrderingState>((set, get) => ({
 export function useOrderedTracks(): Track[] {
   const library = useLibraryStore((s) => s.library);
   const active = useOrderingStore((s) => s.active);
-  if (!library) return [];
-  return orderTracks(library.tracks, active);
+  return useMemo(
+    () => (library ? orderTracks(library.tracks, active) : []),
+    [library, active],
+  );
 }
