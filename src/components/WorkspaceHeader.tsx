@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Settings, FolderSync } from "lucide-react";
-import logoAsset from "@/assets/tempokey-logo.png.asset.json";
+import logoUrl from "@/assets/tempokey-logo.png";
 
 export function WorkspaceHeader() {
   return (
@@ -9,7 +9,7 @@ export function WorkspaceHeader() {
         <Link to="/" className="flex min-w-0 items-center gap-2 shrink-0" aria-label="Accueil">
 
           <img
-            src={logoAsset.url}
+            src={logoUrl}
             alt="TempoKey"
             className="h-8 w-8 rounded-lg bg-white object-contain p-0.5"
           />
