@@ -100,12 +100,14 @@ export function TrackDetailSheet({
               {track.fileName}
             </div>
           </div>
-          <DialogPrimitive.Close
+          <button
+            type="button"
             aria-label="Fermer"
+            onClick={onClose}
             className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--ring)]"
           >
             <X className="h-4 w-4" />
-          </DialogPrimitive.Close>
+          </button>
         </div>
 
         {track.suspect && (
@@ -309,8 +311,7 @@ export function TrackDetailSheet({
         <p className="mt-2 text-center text-[11px] text-muted-foreground">
           Les valeurs verrouillées ne sont jamais remplacées par une nouvelle analyse.
         </p>
-        </DialogPrimitive.Content>
-      </DialogPrimitive.Portal>
-    </DialogPrimitive.Root>
+      </section>
+    </div>
   );
 }
