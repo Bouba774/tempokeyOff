@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from "react";
+import { useDeferredValue, useRef, useState, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   Search,
@@ -217,6 +217,7 @@ export function TrackList() {
   const setManual = useOrderingStore((s) => s.setManual);
 
   const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
   const [filters, setFilters] = useState<LibraryFilters>(DEFAULT_FILTERS);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [reorderMode, setReorderMode] = useState(false);
@@ -237,8 +238,8 @@ export function TrackList() {
   });
 
   const filtered = useMemo(
-    () => applyFiltersOnly(ordered, query, filters),
-    [ordered, query, filters],
+    () => applyFiltersOnly(ordered, deferredQuery, filters),
+    [ordered, deferredQuery, filters],
   );
 
   // When the user has selected a single track, compare every row to it.
@@ -249,6 +250,11 @@ export function TrackList() {
   }, [selectedIds, ordered]);
 
   const activeCount = filtersActiveCount(filters);
+  const orderedIndexById = useMemo(() => {
+    const map = new Map<string, number>();
+    ordered.forEach((track, index) => map.set(track.id, index));
+    return map;
+  }, [ordered]);
 
   const virtualizer = useVirtualizer({
     count: filtered.length,
@@ -323,7 +329,7 @@ export function TrackList() {
         <div style={{ height: virtualizer.getTotalSize(), width: "100%", position: "relative" }}>
           {virtualizer.getVirtualItems().map((vi) => {
             const track = filtered[vi.index];
-            const orderedIndex = ordered.indexOf(track);
+            const orderedIndex = orderedIndexById.get(track.id) ?? vi.index;
             return (
               <div
                 key={track.id}
