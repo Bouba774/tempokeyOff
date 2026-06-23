@@ -28,7 +28,7 @@ import {
   ArrowRight,
   Sparkles,
 } from "lucide-react";
-import logoAsset from "@/assets/tempokey-logo.png.asset.json";
+import logoUrl from "@/assets/tempokey-logo.png";
 import {
   filesFromDirectoryHandle,
   isFsAccessSupported,
@@ -243,7 +243,7 @@ function Home() {
         <div className="relative mx-auto flex max-w-xl flex-col items-center text-center">
           <div className="mb-5 animate-fade-in">
             <img
-              src={logoAsset.url}
+              src={logoUrl}
               alt="TempoKey"
               className="h-20 w-20 rounded-2xl bg-white object-contain p-2"
               style={{ boxShadow: "var(--shadow-elegant)" }}
