@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   X,
   Lock,
@@ -80,25 +79,18 @@ export function TrackDetailSheet({
   }
 
   return (
-    <DialogPrimitive.Root
-      modal={false}
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) onClose();
-      }}
-    >
-      <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay
-          className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0"
-        />
-        <DialogPrimitive.Content
-          onOpenAutoFocus={(event) => event.preventDefault()}
-          onCloseAutoFocus={(event) => event.preventDefault()}
-          className="fixed inset-x-0 bottom-0 z-[60] mx-auto w-full max-w-2xl rounded-t-3xl border border-border bg-[var(--surface-elevated)] p-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] shadow-2xl outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom"
-        >
-          <DialogPrimitive.Title className="sr-only">
-            Détails du morceau
-          </DialogPrimitive.Title>
+    <div className="fixed inset-0 z-[60]" role="presentation">
+      <button
+        type="button"
+        aria-label="Fermer les détails"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in-0"
+      />
+      <section
+        role="dialog"
+        aria-label="Détails du morceau"
+        className="fixed inset-x-0 bottom-0 z-[61] mx-auto w-full max-w-2xl rounded-t-3xl border border-border bg-[var(--surface-elevated)] p-4 pb-[max(env(safe-area-inset-bottom,0px),16px)] shadow-2xl outline-none animate-in slide-in-from-bottom"
+      >
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="truncate text-base font-semibold text-foreground">
