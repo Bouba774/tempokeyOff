@@ -16,7 +16,13 @@ const config: CapacitorConfig = {
   backgroundColor: "#0A0D14",
   android: {
     allowMixedContent: false,
-    captureInput: true,
+    // Important Android WebView stability fix:
+    // Capacitor's alternative InputConnection (`captureInput`) can freeze the
+    // WebView on text fields / focus-heavy UI. Keep the native default path.
+    captureInput: false,
+    // Do not force-focus the WebView on launch; focus is applied only after a
+    // user action, which avoids Android focus/keyboard deadlocks around panels.
+    initialFocus: false,
     webContentsDebuggingEnabled: false,
     // Edge-to-edge moderne (Android 15+ obligatoire) : la WebView s'étend
     // sous les barres système ; nous gérons les safe areas en CSS via
