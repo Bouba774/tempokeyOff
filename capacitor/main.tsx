@@ -54,23 +54,30 @@ void initAndroidBack();
     // We just need to push the icon style (light/dark) when the theme flips.
     const sb = await import("@capacitor/status-bar").catch(() => null);
     if (sb?.StatusBar && cap?.Capacitor?.isNativePlatform()) {
-      // Capacitor StatusBar.Style mapping (IMPORTANT — easy to invert):
-      //   Style.Light = light CONTENT (white icons) → use on DARK backgrounds
-      //   Style.Dark  = dark CONTENT (black icons)  → use on LIGHT backgrounds
+      // Capacitor StatusBar.Style mapping (per @capacitor/status-bar v6 docs):
+      //   Style.Dark  = DARK status bar background → LIGHT (white) icons
+      //                 → use on DARK app themes
+      //   Style.Light = LIGHT status bar background → DARK (black) icons
+      //                 → use on LIGHT app themes
       //   Style.Default = follow system
       const apply = () => {
         const isDark = document.documentElement.classList.contains("dark");
 
-        // Keep WebView overlaying system bars (edge-to-edge).
+        // Keep WebView overlaying system bars (true edge-to-edge fullscreen).
         sb.StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
 
         // Push the correct icon contrast for the active theme.
+        // Dark theme → Style.Dark (white icons on our dark bg)
+        // Light theme → Style.Light (black icons on our light bg)
         sb.StatusBar.setStyle({
-          style: isDark ? sb.Style.Light : sb.Style.Dark,
+          style: isDark ? sb.Style.Dark : sb.Style.Light,
         }).catch(() => {});
 
         // Fully transparent — the app background paints under the status bar.
         sb.StatusBar.setBackgroundColor({ color: "#00000000" }).catch(() => {});
+
+        // Make sure we're never in legacy "hide" mode (would clip the layout).
+        sb.StatusBar.show().catch(() => {});
 
         // Mirror the active background into <meta name="theme-color"> so the
         // recents thumbnail picks up the right tint when the WebView is
