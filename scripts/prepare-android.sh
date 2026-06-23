@@ -10,7 +10,8 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-LOGO_URL="${TEMPOKEY_LOGO_URL:-https://tempokey.lovable.app/__l5e/assets-v1/8d9af5cd-e723-4411-acf4-24e5008f2204/tempokey-logo.png}"
+LOGO_URL="${TEMPOKEY_LOGO_URL:-https://tempokey.lovable.app/__l5e/assets-v1/00136921-a419-4bb4-8cf6-ca6ffceafbba/tempokey-logo.png}"
+LOCAL_LOGO="src/assets/tempokey-logo.png"
 WEB_DIR="dist/android"
 RES_DIR="resources"
 
@@ -71,8 +72,10 @@ echo "✓ index.html links bundled assets"
 
 echo "▶ Preparing icon & splash sources…"
 mkdir -p "$RES_DIR"
-# Use the committed official logo when present, otherwise download from CDN.
-if [ ! -f "$RES_DIR/icon.png" ]; then
+# Prefer the bundled official logo committed in the repo. Fall back to CDN.
+if [ -f "$LOCAL_LOGO" ]; then
+  cp -f "$LOCAL_LOGO" "$RES_DIR/icon.png"
+elif [ ! -f "$RES_DIR/icon.png" ]; then
   curl -L --silent --fail "$LOGO_URL" -o "$RES_DIR/icon.png"
 fi
 if [ ! -f "$RES_DIR/splash.png" ]; then

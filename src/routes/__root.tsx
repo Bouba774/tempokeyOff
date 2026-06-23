@@ -13,6 +13,7 @@ import { FloatingPlayer } from "@/components/FloatingPlayer";
 import { useThemeStore } from "@/lib/theme-store";
 
 import appCss from "../styles.css?url";
+import logoUrl from "@/assets/tempokey-logo.png";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 
 function NotFoundComponent() {
@@ -95,8 +96,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/png", href: "/__l5e/assets-v1/00136921-a419-4bb4-8cf6-ca6ffceafbba/tempokey-logo.png" },
-      { rel: "apple-touch-icon", href: "/__l5e/assets-v1/00136921-a419-4bb4-8cf6-ca6ffceafbba/tempokey-logo.png" },
+      { rel: "icon", type: "image/png", href: logoUrl },
+      { rel: "apple-touch-icon", href: logoUrl },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
